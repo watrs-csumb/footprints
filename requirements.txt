@@ -1,2 +1,6 @@
 scikit-image    # installs pillow, numpy, scipy
 seaborn         # installs pandas, matplotlib
+geopandas       # installs shapely
+requests        # installs urllib3
+rasterio
+shapelysmooth
