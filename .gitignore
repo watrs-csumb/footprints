@@ -1,4 +1,6 @@
 bin
+data
+etc
 include
 lib
 lib64
@@ -6,3 +8,4 @@ share
 .*
 
 *.cfg
+**/__pycache__
