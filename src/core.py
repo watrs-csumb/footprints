@@ -16,7 +16,7 @@ def FPP(
     sigmav: float | None = None, 
     ustar: float | None = None, 
     wind_dir: float | None = None, 
-    rs: float | int | list[int | float] = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], 
+    rs: float | int | list[int] | list[float] | list[int | float] = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], 
     nx: int = 1000, 
     crop: bool = False, 
     fig: bool = False, 
