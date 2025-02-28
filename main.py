@@ -43,9 +43,16 @@ def main():
     im = ax.imshow(footprint_raster.raster, cmap='hot', extent=(minx, maxx, miny, maxy))
     ax.set_xlabel('Easting (m)')
     ax.set_ylabel('Northing (m)')
-    ax.set_title('Ameriflux Footprint')
+    ax.set_title(f'Accumulated Raster\n({tower_location[0]}, {tower_location[1]})')
     fig.colorbar(im, ax=ax, label='Overlap Count')
-    plt.savefig("footprint.png")
+    plt.savefig("footprint_heat.png")
+    
+    fig, ax = plt.subplots(figsize = (6, 6))
+    polygon.plot(ax = ax, edgecolor = 'black', facecolor = 'none')
+    ax.set_xlabel('Easting (m)')
+    ax.set_ylabel('Northing (m)')
+    ax.set_title(f'Tower Footprint Polygon\n({tower_location[0]}, {tower_location[1]})')
+    plt.savefig("footprint_polygon.png")
 
 if __name__ == "__main__":
     main()

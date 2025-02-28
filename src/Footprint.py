@@ -8,8 +8,8 @@ import numpy as np
 from pyproj import Transformer
 from rasterio import features
 from rasterio.features import shapes
-from rasterio.transform import from_origin, xy, Affine
-from shapely.geometry import Polygon, Point
+from rasterio.transform import from_origin, Affine
+from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from shapelysmooth import taubin_smooth
 
@@ -89,16 +89,19 @@ class Footprint:
             raise ValueError("data must be set before drawing.")
         
         # Empty list to hold all footprint polygons.
-        polygons = gpd.GeoSeries()
+        polygons = []
         
-        def _form_poly(index, row):
+        for index, row in self.data.iterrows():
+            if index >= 300: # type: ignore
+                break
+            
             try:
                 footprint = FPP(
                     zm = row["zm"],
                     z0 = row["z0"],
                     umean = row["u_mean"],
                     h = BOUNDARY_LAYER_HEIGHT,
-                    ol = row["ol"],
+                    ol = row["L"],
                     sigmav = row["sigma_v"],
                     ustar = row["u_star"],
                     wind_dir = row["wind_dir"],
@@ -111,15 +114,13 @@ class Footprint:
                 
                 # Create polygon from xr, yr coordinates.
                 polygon = Polygon(zip(xr, yr))
-                return polygon
+                polygons.append(polygon)
             except KeyError as e:
                 print(f"KeyError in row {index}: {e}")
             except ValueError as e:
                 print(f"ValueError in row {index}: {e}")
             except Exception as e:
                 print(f"Error in row {index}: {e}")
-        
-        polygons = gpd.GeoSeries([_form_poly(index, row) for index, row in self.data.iterrows()])
         
         # Create GeoDataFrame from all collected polygons at once.
         self.geometry = gpd.GeoDataFrame(geometry = polygons, crs = self.utm_crs) # type: ignore
@@ -163,43 +164,23 @@ class Footprint:
         return self
     
     def polygonize(self, threshold: float = 0.0) -> gpd.GeoDataFrame:
-        if not self.raster:
+        if self.raster is None:
             raise ValueError("raster must be set before polygonizing.")
         assert self.transform
         
-        # First, identify non-zero pixels.
-        non_zero_indices = np.nonzero(self.raster)
-        non_zero_values = self.raster[non_zero_indices]
+        max_overlaps = np.max(self.raster)
+        mask = self.raster > (max_overlaps * threshold)
         
-        # Secondly, get corresponding x, y coordinates for each pixel.
-        xs, ys = xy(self.transform, non_zero_indices[1], non_zero_indices[0])
+        shapes_gen = shapes(self.raster, mask = mask, transform = self.transform)
+        polygons = [shape(geom) for geom, _ in shapes_gen]
         
-        # Create Point geometries from x, y coordinates.
-        geometries = [Point(x, y) for x, y in zip(xs, ys)]
+        combined_polygon = unary_union(polygons)
         
-        # Create a GeoDataFrame to hold the geometries and the overlap counts.
-        raster_non_zero = gpd.GeoDataFrame({
-            'geometry': geometries,
-            'overlap_count': non_zero_values
-        }, crs = self.utm_crs)
+        gdf = gpd.GeoDataFrame(geometry = [combined_polygon], crs = self.utm_crs) # type: ignore
         
-        # Then, identify the maximum overlap value.
-        max_overlaps = np.max(raster_non_zero)
-        mask = raster_non_zero > (max_overlaps * threshold)
-        
-        # Generate shapes.
-        shapes_gen = shapes(raster_non_zero, mask = mask, transform = self.transform)
-        
-        # Merge shapes.
-        polygon = unary_union(shapes_gen)
-        
-        # Create GeoDataFrame from the polygon.
-        polygon_gpd = gpd.GeoDataFrame(geometry = [polygon], crs = self.utm_crs)
-        
-        # Smoothen the polygon geometry, catching potential smoothing errors.
         try:
-            polygon_gpd.loc[0, 'geometry'] = taubin_smooth(polygon_gpd.loc[0, 'geometry'], steps = 50)
+            gdf.loc[0, "geometry"] = taubin_smooth(gdf.loc[0, "geometry"], steps = 50) # type: ignore
         except Exception as e:
             print(f"Error in smoothing polygon: {e}")
         
-        return polygon_gpd
+        return gdf
