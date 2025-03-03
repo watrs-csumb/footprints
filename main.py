@@ -8,15 +8,20 @@ import pandas as pd
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", "-i", type=str, help="Path to Ameriflux .dat file")
-parser.add_argument("--output", "-o", type=str, help="Path to output .csv file")
-args = parser.parse_args()
+parser.add_argument("--output", "-o", nargs="?", type=str, help="Path to output .csv file")
+parser.add_argument("--contour", "-c", nargs="?", help="""Percentage of source area for which to provide contours, must be between 10% and 90%.\n
+            Can be either a single value (e.g., "80") or a list of values (e.g., "[10, 20, 30]")\n
+            Expressed either in percentages ("80") or as fractions of 1 ("0.8").\n
+            Default is [90]. Set to "None" for no output of percentages""")
+parser.add_argument("--boundary-layer-height", "-b", nargs="?", type=float, help="Boundary layer height [m]")
 
 def main():
-    # args = parser.parse_args()
+    args = parser.parse_args()
     
-    # afdat = args.input
-    # out = args.output
-    afdat = "./data/B_SanLuis/Data/0_Input_Datasets/Lettuce/Lettuce2024_30min_gapfilled.csv"
+    afdat = args.input
+    blh = args.boundary_layer_height
+    contour = args.contour
+    
     if not pathlib.Path(afdat).exists():
         raise FileNotFoundError(f"File {afdat} does not exist")
     
@@ -31,7 +36,12 @@ def main():
     }
     
     footprint = Footprint(tower_location, tower_spec, hemisphere)
-    footprint_raster = footprint.attach(df).draw().rasterize()
+    if blh:
+        footprint.boundary_layer_height = blh
+    if contour:
+        footprint.contour_src_pct = contour
+    
+    footprint_raster = footprint.attach(df).draw().rasterize(30)
     
     polygon = footprint_raster.polygonize(0.8)
     

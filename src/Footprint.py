@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Self, Any
 from .core import FPP
 
 import pandas as pd
@@ -21,11 +21,31 @@ class Footprint:
     
     def __init__(self, 
                 tower_location: tuple[float, float],
-                tower_spec: dict,
+                tower_spec: dict[str, float | int],
                 hemisphere: str = "North"):
+        """
+        Initialize the Footprint object.
+
+        Parameters
+        ----------
+        tower_location : tuple[float, float]
+            The latitude and longitude of the tower location.
+        tower_spec : dict
+            A dictionary with the following required keys:
+                - zm: The height of the measurement in meters.
+                - z0 or umean: The surface roughness length in meters or the mean wind speed in meters per second.
+        hemisphere : str, optional
+            The hemisphere of the tower location, either 'North' or 'South'. Default is 'North'.
+
+        Notes
+        -----
+        The Footprint object is initialized with the tower location and tower specification.
+        The UTM coordinates of the tower location are calculated and stored as easting and northing.
+        """
         self.latitude = tower_location[0]
         self.longitude = tower_location[1]
         self.hemisphere = hemisphere
+        self._ws_limit_quantile = 0.95
         
         self.utm_crs: str = ""
         self.easting: float = 0.0
@@ -45,6 +65,36 @@ class Footprint:
         
         self.tower_spec = tower_spec
     
+    @property
+    def ws_limit_quantile(self) -> float:
+        return self._ws_limit_quantile
+    
+    @ws_limit_quantile.setter
+    def ws_limit_quantile(self, value: float):
+        self._ws_limit_quantile = value
+    
+    @property
+    def boundary_layer_height(self) -> float:
+        return self.__dict__.get("_boundary_layer_height") or BOUNDARY_LAYER_HEIGHT
+    
+    @boundary_layer_height.setter
+    def boundary_layer_height(self, value: float):
+        self._boundary_layer_height = value
+    
+    @property
+    def contour_src_pct(self):
+        return self.__dict__.get("_contour_src_pct") or CONTOUR_SRC_PCT
+    
+    @contour_src_pct.setter
+    def contour_src_pct(self, value: float | list[float | int]):
+        self._contour_src_pct = value
+    
+    def __repr__(self):
+        if self.geometry is not None:
+            return f"Footprint with {len(self.geometry)} polygons.\n{self.geometry.head(1)}"
+
+        return f"Footprint for latitude: {self.latitude}, longitude: {self.longitude}"
+
     def _to_utm(self):
         utm_zone = int((self.longitude + 180) / 6) + 1  # calculate UTM zone based on longitude
         self.utm_crs = f"+proj=utm +zone={utm_zone} +datum=WGS84 +units=m +no_defs"  # create UTM CRS
@@ -53,8 +103,38 @@ class Footprint:
         self.easting, self.northing = transformer.transform(self.latitude, self.longitude)
     
     def attach(self, data: pd.DataFrame, displacement: float = 0.0) -> Self:
-        # Slice and copy.
-        self.data = data[["date_time", "WS", "USTAR", "WD", "V_SIGMA", "MO_LENGTH"]].copy()
+        """
+        Attach a pandas DataFrame to the Footprint object.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            A pandas DataFrame containing the required columns.
+        displacement : float, optional
+            The displacement height in meters. Default is 0.0.
+
+        Returns
+        -------
+        Self
+            The Footprint object with the attached data.
+
+        Notes
+        -----
+        The required columns are:
+        - date_time: A datetime column.
+        - WS: The mean wind speed in meters per second.
+        - USTAR: The friction velocity in meters per second.
+        - WD: The wind direction in degrees.
+        - V_SIGMA: The lateral velocity in meters per second.
+        - MO_LENGTH: The Obukhov length in meters.
+
+        The `attach` method will subset the data to only include data between 9 AM and 3PM.
+        """
+        self.data = data[Footprint._req_columns].copy()
+        
+        # Filter WS (wind speed) so outliers are removed.
+        wind_lim = self.data["WS"].quantile(self._ws_limit_quantile)
+        self.data["WS"] = self.data["WS"].clip(upper=wind_lim)
         
         # Add spec columns.
         self.data["zm"] = self.tower_spec["zm"]
@@ -85,6 +165,32 @@ class Footprint:
         return self
     
     def draw(self) -> Self:
+        """
+        Generate footprint polygons from the attached data.
+
+        This method processes the attached DataFrame to calculate footprint polygons
+        based on the specified parameters for each row of data. It uses the Footprint 
+        Model (FPP) to compute the footprint coordinates, creates polygons, and stores 
+        them in a GeoDataFrame.
+
+        Returns
+        -------
+        Self
+            The Footprint object with the computed footprint polygons.
+
+        Raises
+        ------
+        ValueError
+            If the data is not set before calling the method.
+
+        Notes
+        -----
+        The processing is limited to the first 300 rows for memory reasons. The 
+        footprint polygons are created using the UTM coordinates of the tower and 
+        stored in the `geometry` attribute as a GeoDataFrame. The overall extent of 
+        the computed geometry is printed if polygons are successfully processed.
+        """
+
         if self.data is None:
             raise ValueError("data must be set before drawing.")
         
@@ -100,12 +206,12 @@ class Footprint:
                     zm = row["zm"],
                     z0 = row["z0"],
                     umean = row["u_mean"],
-                    h = BOUNDARY_LAYER_HEIGHT,
+                    h = self.boundary_layer_height,
                     ol = row["L"],
                     sigmav = row["sigma_v"],
                     ustar = row["u_star"],
                     wind_dir = row["wind_dir"],
-                    rs = CONTOUR_SRC_PCT,
+                    rs = self.contour_src_pct,
                     fig = False
                 )
                 
@@ -135,6 +241,32 @@ class Footprint:
         return self
     
     def rasterize(self, resolution: int = 1) -> Self:
+        """
+        Rasterize the footprint polygons to a numpy array.
+
+        Parameters
+        ----------
+        resolution : int
+            The desired resolution of the output raster in meters per pixel.
+            Default is 1.
+
+        Returns
+        -------
+        Self
+            The Footprint object with the rasterized footprint polygons.
+
+        Raises
+        ------
+        ValueError
+            If the geometry is not set before calling the method.
+
+        Notes
+        -----
+        The raster is created by accumulating the rasterized footprint polygons
+        from the GeoDataFrame `geometry`. The output raster has a shape based
+        on the bounds of the geometry and is stored in the `raster` attribute. 
+        The transformation matrix is stored in the `transform` attribute.
+        """
         if self.geometry is None:
             raise ValueError("geometry must be set before rasterizing.")
         
@@ -164,6 +296,33 @@ class Footprint:
         return self
     
     def polygonize(self, threshold: float = 0.0) -> gpd.GeoDataFrame:
+        """
+        Create a single polygon from rasters that meet overlap threshold.
+
+        Parameters
+        ----------
+        threshold : float, optional
+            The threshold for the overlap count to be considered a valid polygon.
+            Defaults to 0.0.
+
+        Returns
+        -------
+        gpd.GeoDataFrame
+            A GeoDataFrame containing a single polygon that meets the overlap
+            threshold, with a single row and column named 'geometry'.
+
+        Raises
+        ------
+        ValueError
+            If the raster is not set before calling the method.
+
+        Notes
+        -----
+        The polygon is created by masking the raster with the given threshold,
+        and then creating a single polygon from the resulting shapes. The
+        polygon is then smoothed to reduce the number of vertices. The
+        GeoDataFrame is created with a single row and column named 'geometry'.
+        """
         if self.raster is None:
             raise ValueError("raster must be set before polygonizing.")
         assert self.transform

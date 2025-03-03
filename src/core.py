@@ -200,7 +200,7 @@ def FPP(
         ol = -1E6
     if ol <= 0:   #convective
         scale_const = 1E-5 * abs(zm / ol)**(-1) + 0.80
-    elif ol > 0:  #stable
+    else:  #stable
         scale_const = 1E-5 * abs(zm / ol)**(-1) + 0.55
     if scale_const > 1:
         scale_const = 1.0
