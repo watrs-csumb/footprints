@@ -1,4 +1,4 @@
-from src.Footprint import Footprint
+from footprint import Footprint
 
 import pathlib
 import tomllib
