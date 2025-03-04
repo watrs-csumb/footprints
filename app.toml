@@ -1,0 +1,27 @@
+[input]
+# Relative path to input file.
+file                    = "/data/CSUMB_Broccoli_Pryor_pi_qc_20230922.csv"
+# Latitude and longitude of tower location.
+location                = [36.456667, 121.382222]
+# Hemisphere of tower location.
+hemisphere              = "North"
+# Estimated height of the boundary layer in meters.
+boundary_layer_height   = 2000
+# Percentage of source area for which to provide contours, must be between 10% and 90%. 
+# Can be either a single value (e.g., "80") or a list of values (e.g., "[10, 20, 30]")
+# Expressed either in percentages ("80") or as fractions of 1 ("0.8"). 
+source_contour_ratio    = [90]
+# Measurement height above displacement height in meters.
+tower_spec.zm           = 2.0
+# Roughless length in meters.
+tower_spec.z0           = 0.1
+# Displacement height in meters.
+tower_spec.d            = 0.335
+
+[output]
+# Relative path to output directory.
+output_dir              = "/"
+# Meters per pixel for the output image.
+spatial_resolution      = 1
+# Overlap threshold for polygonization.
+overlap_threshold       = 0.8
