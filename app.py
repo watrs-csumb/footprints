@@ -4,6 +4,7 @@ import pathlib
 import tomllib
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 def main():
@@ -24,7 +25,20 @@ def main():
     
     # Validate output directory exists.
     if not pathlib.Path(outputdir).exists() or not pathlib.Path(outputdir).is_dir():
-        raise FileNotFoundError(f"Directory {outputdir} does not exist")
+        raise NotADirectoryError(f"Directory {outputdir} does not exist")
+    
+    if type(tower_spec) is not dict:
+        raise TypeError("Tower specification must be a dictionary")
+    if type(hemisphere) is not str:
+        raise TypeError("Hemisphere must be a string")
+    if type(resolution) is not int or resolution <= 0:
+        raise ValueError("Spatial resolution must be a positive integer")
+    if (type(blh) is not float and type(blh) is not int) or blh < 0.:
+        raise ValueError("Boundary layer height must be a positive number")
+    if type(contour) not in [float, int, list] or np.min(contour) < 0.:
+        raise ValueError("Source contour ratio must be positive number(s)")
+    if type(overlap_threshold) is not float or overlap_threshold < 0. or overlap_threshold > 1.:
+        raise ValueError("Overlap threshold must be a float between 0 and 1")
     
     df = pd.read_csv(afdat)
     
