@@ -1,4 +1,4 @@
-from typing import Self, Any
+from typing import Self
 from .core import FPP
 
 import pandas as pd
@@ -295,7 +295,7 @@ class Footprint:
         
         return self
     
-    def polygonize(self, threshold: float = 0.0) -> gpd.GeoDataFrame:
+    def polygonize(self, threshold: float = 1.0) -> gpd.GeoDataFrame:
         """
         Create a single polygon from rasters that meet overlap threshold.
 

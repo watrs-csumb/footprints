@@ -9,3 +9,4 @@ share
 
 *.cfg
 **/__pycache__
+**_footprint**
