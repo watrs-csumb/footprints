@@ -9,7 +9,7 @@ import pandas as pd
 
 def main():
     cfg = tomllib.load(open("app.toml", "rb"))
-    afdat = f".{cfg['input']['file']}"
+    afdat = f"{cfg['input']['file']}"
     file = pathlib.Path(afdat)
     
     tower_location = cfg["input"]["location"]
@@ -58,9 +58,9 @@ def main():
     # Create a polygon from the raster.
     polygon = footprint_raster.polygonize(overlap_threshold)
     
-    pathlib.Path(f".{outputdir + file.stem}").mkdir(exist_ok=True)
-    polygon.to_file(f".{outputdir + file.stem}/{file.stem}_footprint.shp")
-    polygon.to_file(f".{outputdir}{file.stem}_footprint.geojson", driver="GeoJSON")
+    pathlib.Path(f"{outputdir + file.stem}").mkdir(exist_ok=True)
+    polygon.to_file(f"{outputdir + file.stem}/{file.stem}_footprint.shp")
+    polygon.to_file(f"{outputdir}{file.stem}_footprint.geojson", driver="GeoJSON")
     
     fig, ax = plt.subplots(figsize = (6, 6))
     assert footprint_raster.raster is not None
@@ -72,14 +72,14 @@ def main():
     ax.set_ylabel("Northing (m)")
     ax.set_title(f"Accumulated Raster\n({tower_location[0]}, {tower_location[1]})")
     fig.colorbar(im, ax=ax, label="Overlap Count")
-    plt.savefig(f".{outputdir}{file.stem}_footprint_heat.png")
+    plt.savefig(f"{outputdir}{file.stem}_footprint_heat.png")
     
     fig, ax = plt.subplots(figsize = (6, 6))
     polygon.plot(ax = ax, edgecolor = "black", facecolor = "none")
     ax.set_xlabel("Easting (m)")
     ax.set_ylabel("Northing (m)")
     ax.set_title(f"Tower Footprint Polygon\n({tower_location[0]}, {tower_location[1]})")
-    plt.savefig(f".{outputdir}{file.stem}_footprint_polygon.png")
+    plt.savefig(f"{outputdir}{file.stem}_footprint_polygon.png")
 
 if __name__ == "__main__":
     main()

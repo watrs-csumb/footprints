@@ -6,7 +6,85 @@
 |:--------|:-----------|
 |Footprint| A footprint is an area measured by scientific instruments used to measure surface data. |
 
+# Usage
+## Installation
+Follow the steps below to get setup. \
+1. Clone the repository \
+    ```bash
+    git clone https://github.com/aetriusgx/footprints.git
+    ```
+2. Open folder \
+    ```bash
+    cd footprints
+    ```
+3. Activate a virtual environment and install dependencies
+    1. (Method 1) Run the setup script
+        ```bash
+        source ./Scripts/setup.sh
+        ```
+    2. (Method 2) Manually start and install
+        ```bash
+        # Start the virtual environment
+        $ python -m venv .
+        $ source bin/activate
+        # Update pip, if necessary
+        $ python -m pip --upgrade pip
+        # Install dependencies
+        $ pip install -r requirements.txt
+        ```
 
+## app.toml
+This is the configuration file and should be the only file you modify. The configuration schema is explained below.
+
+### Input
+#### `file`
+A relative path to the input file. 
+```toml
+# Example (relative)
+file = "./mydata.csv"
+# Example (absolute)
+file = "/Users/you/Downloads/data.csv"
+```
+> [!NOTE]
+> If your data file is elsewhere, copy the path and paste into this field.
+
+#### `location`
+A tuple of latitude and longitude of tower location. This is used in the transformation matrix for the footprint geometry. Uses EPSG:4326.
+
+#### `hemisphere`
+The hemisphere that the tower is located. For US users, this can be left alone.
+
+#### `boundar_layer_height`
+Estimated height of the boundary layer in meters.
+
+#### `source_contour_ratio`
+Percentage of source area for which to provide contours, must be between 10% and 90%
+* Can be either a single value (e.g., "80") or a list of values (e.g., "[10, 20, 30]")\
+* Expressed either in percentages ("80") or as fractions of 1 ("0.8"). 
+
+#### `tower_spec.zm`
+Measurement height above displacement height in meters.
+
+#### `tower_spec.z0`
+Roughless length in meters
+
+#### `tower_spec.d`
+Displacement height in meters
+
+## app.py
+This is the script application that generates the footprint and exports:
+* A folder containing a shapefile
+* A GeoJSON file
+* An overlap heatmap centered around the tower
+* A polygon figure of the footprint with the source_contour_ratio factored in.
+  
+### Run app.py
+```bash
+# To run the script, simply run:
+python app.py
+```
+
+# Acknowledgements
 ## Footprint Prediction Calculation
 The source code is heavily inspired by the work of Natascha Kljun of Swansea University in Swansea, UK.
 

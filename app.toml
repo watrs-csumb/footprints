@@ -1,6 +1,6 @@
 [input]
-# Relative path to input file.
-file                    = "/data/CSUMB_Broccoli_Pryor_pi_qc_20230922.csv"
+# Path to input file.
+file                    = "./data/CSUMB_Broccoli_Pryor_pi_qc_20230922.csv"
 # Latitude and longitude of tower location.
 location                = [36.456667, 121.382222]
 # Hemisphere of tower location.
@@ -19,8 +19,8 @@ tower_spec.z0           = 0.1
 tower_spec.d            = 0.335
 
 [output]
-# Relative path to output directory.
-output_dir              = "/"
+# Path to output directory.
+output_dir              = "./"
 # Meters per pixel for the output image.
 spatial_resolution      = 1
 # Overlap threshold for polygonization.
