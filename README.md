@@ -8,19 +8,23 @@
 
 # Usage
 ## Installation
-Follow the steps below to get setup. \
-1. Clone the repository \
+Follow the steps below to get setup.
+1. Clone the repository
     ```bash
-    git clone https://github.com/aetriusgx/footprints.git
+    $ git clone https://github.com/aetriusgx/footprints.git
     ```
-2. Open folder \
+2. Open folder
     ```bash
-    cd footprints
+    $ cd footprints
     ```
 3. Activate a virtual environment and install dependencies
     1. (Method 1) Run the setup script
         ```bash
-        source ./Scripts/setup.sh
+        # For Linux/Unix platforms:
+        $ source ./Scripts/setup.sh
+
+        # For Windows:
+        $ ./Scripts/setup.ps1
         ```
     2. (Method 2) Manually start and install
         ```bash
@@ -81,7 +85,7 @@ This is the script application that generates the footprint and exports:
 ### Run app.py
 ```bash
 # To run the script, simply run:
-python app.py
+$ python app.py
 ```
 
 # Acknowledgements
