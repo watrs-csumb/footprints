@@ -30,9 +30,12 @@ Follow the steps below to get setup.
         ```bash
         # Start the virtual environment
         $ python -m venv .
-        $ source bin/activate
+        $ source bin/activate # <- Linux/Unix
+        $ .\Scripts\Activate.ps1 # <- Windows
+
         # Update pip, if necessary
         $ python -m pip --upgrade pip
+        
         # Install dependencies
         $ pip install -r requirements.txt
         ```
@@ -74,6 +77,16 @@ Roughless length in meters
 
 #### `tower_spec.d`
 Displacement height in meters
+
+### Output
+#### `output_dir`
+Directory to place the output files in.
+
+#### `spatial_resolution`
+The spatial resolution to use for the polygon in meters per pixel.
+
+#### `overlap_threshold`
+Percentage adjustment for number of overlaps needed for data to contribute to footprint. Must be between 0 and 1.
 
 ## app.py
 This is the script application that generates the footprint and exports:
