@@ -9,7 +9,7 @@ import pandas as pd
 
 def main():
     cfg = tomllib.load(open("app.toml", "rb"))
-    afdat = f"{cfg['input']['file']}"
+    afdat = f"{cfg['input']['file'].replace("\\",'/')}"
     file = pathlib.Path(afdat)
     
     tower_location = cfg["input"]["location"]
