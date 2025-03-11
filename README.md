@@ -1,11 +1,4 @@
 # Flux Footprints by CSUMB WATRS
-`Developed in Python 3.12`
-
-## Key Terms
-| Keyword | Definition |
-|:--------|:-----------|
-|Footprint| A footprint is an area measured by scientific instruments used to measure surface data. |
-
 # Usage
 ## Prerequisites
 * Python 3.10+
