@@ -7,37 +7,44 @@
 |Footprint| A footprint is an area measured by scientific instruments used to measure surface data. |
 
 # Usage
+## Prerequisites
+* Python 3.10+
+* Powershell (Windows)
+  
+> [!NOTE]
+>If using conda, ensure you are using a terminal with an activated environment.
+
 ## Installation
-Follow the steps below to get setup.
+Use a terminal to follow the steps below to get setup.
 1. Clone the repository
     ```bash
-    $ git clone https://github.com/aetriusgx/footprints.git
+    git clone https://github.com/aetriusgx/footprints.git
     ```
 2. Open folder
     ```bash
-    $ cd footprints
+    cd footprints
     ```
 3. Activate a virtual environment and install dependencies
     1. (Method 1) Run the setup script
         ```bash
         # For Linux/Unix platforms:
-        $ source ./Scripts/setup.sh
+        source ./Scripts/setup.sh
 
         # For Windows:
-        $ ./Scripts/setup.ps1
+        ./Scripts/setup.ps1
         ```
     2. (Method 2) Manually start and install
         ```bash
         # Start the virtual environment
-        $ python -m venv .
+        python -m venv .
         $ source bin/activate # <- Linux/Unix
-        $ .\Scripts\Activate.ps1 # <- Windows
+        .\Scripts\Activate.ps1 # <- Windows
 
         # Update pip, if necessary
-        $ python -m pip --upgrade pip
+        python -m pip --upgrade pip
         
         # Install dependencies
-        $ pip install -r requirements.txt
+        pip install -r requirements.txt
         ```
 
 ## app.toml
