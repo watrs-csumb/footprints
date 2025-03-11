@@ -35,12 +35,12 @@ def main():
         raise TypeError("Hemisphere must be a string")
     if type(resolution) is not int or resolution <= 0:
         raise ValueError("Spatial resolution must be a positive integer")
-    if (type(blh) is not float and type(blh) is not int) or blh < 0.:
+    if (type(blh) not in [float, int] and type(blh) is not int) or blh < 0.:
         raise ValueError("Boundary layer height must be a positive number")
     if type(contour) not in [float, int, list] or np.min(contour) < 0.:
         raise ValueError("Source contour ratio must be positive number(s)")
-    if type(overlap_threshold) is not float or overlap_threshold < 0. or overlap_threshold > 1.:
-        raise ValueError("Overlap threshold must be a float between 0 and 1")
+    if type(overlap_threshold) not in [float, int] or overlap_threshold < 0 or overlap_threshold > 1:
+        raise ValueError("Overlap threshold must be a number between 0 and 1")
     
     df = pd.read_csv(afdat)
     
