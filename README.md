@@ -27,7 +27,7 @@ Use a terminal to follow the steps below to get setup.
 3. Activate a virtual environment and install dependencies
     1. (Method 1) Run the setup script
         ```bash
-        # For Linux/Unix platforms:
+        # For Linux/Unix:
         source ./Scripts/setup.sh
 
         # For Windows:
@@ -37,7 +37,7 @@ Use a terminal to follow the steps below to get setup.
         ```bash
         # Start the virtual environment
         python -m venv .
-        $ source bin/activate # <- Linux/Unix
+        source bin/activate # <- Linux/Unix
         .\Scripts\Activate.ps1 # <- Windows
 
         # Update pip, if necessary
@@ -73,7 +73,7 @@ Estimated height of the boundary layer in meters.
 
 #### `source_contour_ratio`
 Percentage of source area for which to provide contours, must be between 10% and 90%
-* Can be either a single value (e.g., "80") or a list of values (e.g., "[10, 20, 30]")\
+* Can be either a single value (e.g., "80") or a list of values (e.g., "[10, 20, 30]")
 * Expressed either in percentages ("80") or as fractions of 1 ("0.8"). 
 
 #### `tower_spec.zm`
@@ -105,7 +105,7 @@ This is the script application that generates the footprint and exports:
 ### Run app.py
 ```bash
 # To run the script, simply run:
-$ python app.py
+python app.py
 ```
 
 # Acknowledgements
