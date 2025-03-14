@@ -17,7 +17,7 @@ BOUNDARY_LAYER_HEIGHT = 2000
 CONTOUR_SRC_PCT = [90]
 
 class Footprint:
-    _req_columns = ["date_time", "WS", "USTAR", "WD", "V_SIGMA", "MO_LENGTH"]
+    _req_columns = ["date_time", "WS", "USTAR", "WD", "V_SIGMA", "MO_LENGTH", "instr_height_m", "canopy_height_m"]
     
     def __init__(self, 
                 tower_location: tuple[float, float],
@@ -56,9 +56,6 @@ class Footprint:
         self.transform: Affine | None = None
         
         self._to_utm()
-        
-        if "zm" not in tower_spec.keys():
-            raise ValueError("tower_spec must contain keys: ['zm']")
         
         if "z0" not in tower_spec.keys() and "umean" not in tower_spec.keys():
             raise ValueError("tower_spec must contain either 'z0' or 'umean'.")
@@ -102,7 +99,7 @@ class Footprint:
         transformer = Transformer.from_crs("epsg:4326", self.utm_crs)
         self.easting, self.northing = transformer.transform(self.latitude, self.longitude)
     
-    def attach(self, data: pd.DataFrame, displacement: float = 0.0) -> Self:
+    def attach(self, data: pd.DataFrame) -> Self:
         """
         Attach a pandas DataFrame to the Footprint object.
 
@@ -110,8 +107,6 @@ class Footprint:
         ----------
         data : pd.DataFrame
             A pandas DataFrame containing the required columns.
-        displacement : float, optional
-            The displacement height in meters. Default is 0.0.
 
         Returns
         -------
@@ -122,6 +117,8 @@ class Footprint:
         -----
         The required columns are:
         - date_time: A datetime column.
+        - instr_height_m: The instrument height in meters.
+        - canopy_height_m: The canopy height in meters (used as displacement height).
         - WS: The mean wind speed in meters per second.
         - USTAR: The friction velocity in meters per second.
         - WD: The wind direction in degrees.
@@ -135,11 +132,8 @@ class Footprint:
         # Filter WS (wind speed) so outliers are removed.
         wind_lim = self.data["WS"].quantile(self._ws_limit_quantile)
         self.data["WS"] = self.data["WS"].clip(upper=wind_lim)
-        
-        # Add spec columns.
-        self.data["zm"] = self.tower_spec["zm"]
+
         self.data["z0"] = self.tower_spec["z0"]
-        self.data["d"] = displacement
 
         # Convert to datetime.
         self.data["date_time"] = pd.to_datetime(self.data["date_time"])
@@ -152,10 +146,18 @@ class Footprint:
         self.data["MM"] = self.data["date_time"].dt.minute
         
         # Rearrange columns.
-        self.data = self.data[["yyyy", "mm", "day", "HH", "MM", "zm", "d", "z0", "WS", "MO_LENGTH", "V_SIGMA", "USTAR", "WD"]]
+        self.data = self.data[["yyyy", "mm", "day", "HH", "MM", "instr_height_m", "canopy_height_m", "z0", "WS", "MO_LENGTH", "V_SIGMA", "USTAR", "WD"]]
         
         # Rename columns.
-        self.data = self.data.rename(columns={"WS": "u_mean", "MO_LENGTH": "L", "V_SIGMA": "sigma_v", "USTAR": "u_star", "WD": "wind_dir"})
+        self.data = self.data.rename(
+            columns={"instr_height_m": "zm", 
+                     "canopy_height_m": "d",
+                     "WS": "u_mean", 
+                     "MO_LENGTH": "L", 
+                     "V_SIGMA": "sigma_v",
+                     "USTAR": "u_star", 
+
+                     "WD": "wind_dir"})
 
         # Subset to only include data between 9 AM and 3PM.
         self.data = self.data[(self.data["HH"] >= 9) & (self.data["HH"] <= 15)]
