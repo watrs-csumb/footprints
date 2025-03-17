@@ -16,7 +16,6 @@ def main():
     reference_eto_file = cfg["input"]["eto_file"]
     
     tower_location = cfg["input"]["location"]
-    tower_spec = cfg["input"]["tower_spec"]
     blh = cfg["input"]["boundary_layer_height"]
     contour = cfg["input"]["source_contour_ratio"]
     
@@ -39,8 +38,6 @@ def main():
         if not pathlib.Path(reference_eto_file).exists():
             raise FileNotFoundError(f"File '{reference_eto_file}' could not be found.")
     
-    if type(tower_spec) is not dict:
-        raise TypeError("Tower specification must be a dictionary")
     if type(resolution) is not int or resolution <= 0:
         raise ValueError("Spatial resolution must be a positive integer")
     if (type(blh) not in [float, int] and type(blh) is not int) or blh < 0.:
@@ -54,7 +51,7 @@ def main():
     rdf = pd.read_csv(reference_eto_file) if using_reference_eto else None
     
     # Create footprint object.
-    footprint = Footprint(tower_location, tower_spec)
+    footprint = Footprint(tower_location)
     
     # Override footprint parameters.
     if blh:

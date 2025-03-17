@@ -17,11 +17,10 @@ BOUNDARY_LAYER_HEIGHT = 2000
 CONTOUR_SRC_PCT = [90]
 
 class Footprint:
-    _req_columns = ["date_time", "WS", "USTAR", "WD", "V_SIGMA", "MO_LENGTH", "instr_height_m", "canopy_height_m"]
+    _req_columns = ["date_time", "WS", "USTAR", "WD", "V_SIGMA", "MO_LENGTH", "instr_height_m", "canopy_height_m", "Z0_roughness"]
     
     def __init__(self, 
-                tower_location: tuple[float, float],
-                tower_spec: dict[str, float | int]):
+                tower_location: tuple[float, float]):
         """
         Initialize the Footprint object.
 
@@ -53,11 +52,6 @@ class Footprint:
         self.transform: Affine | None = None
         
         self._to_utm()
-        
-        if "z0" not in tower_spec.keys() and "umean" not in tower_spec.keys():
-            raise ValueError("tower_spec must contain either 'z0' or 'umean'.")
-        
-        self.tower_spec = tower_spec
     
     @property
     def ws_limit_quantile(self) -> float:
@@ -130,8 +124,6 @@ class Footprint:
         wind_lim = self.data["WS"].quantile(self._ws_limit_quantile)
         self.data["WS"] = self.data["WS"].clip(upper=wind_lim)
 
-        self.data["z0"] = self.tower_spec["z0"]
-
         # Convert to datetime.
         self.data["date_time"] = pd.to_datetime(self.data["date_time"])
         
@@ -149,12 +141,13 @@ class Footprint:
         self.data["MM"] = self.data["date_time"].dt.minute
         
         # Rearrange columns.
-        self.data = self.data[["date_time", "yyyy", "mm", "day", "HH", "MM", "instr_height_m", "canopy_height_m", "z0", "WS", "MO_LENGTH", "V_SIGMA", "USTAR", "WD"]]
+        self.data = self.data[["date_time", "yyyy", "mm", "day", "HH", "MM", "instr_height_m", "canopy_height_m", "Z0_roughness", "WS", "MO_LENGTH", "V_SIGMA", "USTAR", "WD"]]
         
         # Rename columns.
         self.data = self.data.rename(
             columns={"instr_height_m": "zm", 
                      "canopy_height_m": "d",
+                     "Z0_roughness": "z0",
                      "WS": "u_mean", 
                      "MO_LENGTH": "L", 
                      "V_SIGMA": "sigma_v",
