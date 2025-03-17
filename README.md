@@ -48,7 +48,7 @@ This is the configuration file and should be the only file you modify. The confi
 
 ### Input
 #### `file`
-A relative path to the input file. 
+Path to the input file. 
 ```toml
 # Example (relative)
 file = "./mydata.csv"
@@ -57,33 +57,31 @@ file = "/Users/you/Downloads/data.csv"
 ```
 > [!NOTE]
 > If your data file is elsewhere, copy the path and paste into this field.
+>
+> `\` characters are replaced with `/`
 
 #### `location`
 A tuple of latitude and longitude of tower location. This is used in the transformation matrix for the footprint geometry. Uses EPSG:4326.
 
-#### `hemisphere`
-The hemisphere that the tower is located. For US users, this can be left alone.
+#### `weigh_by_eto`
+Enables weighing the footprint data by reference ETo data. This data is assumed to be a separate file that must be provided in `eto_file`.
+
+#### `eto_file`
+Path to the reference ETo data. This field is ignored if `weigh_by_eto` is `false`.
 
 #### `boundar_layer_height`
 Estimated height of the boundary layer in meters.
 
 #### `source_contour_ratio`
 Percentage of source area for which to provide contours, must be between 10% and 90%
+* Affects daily footprint calculation.
 * Can be either a single value (e.g., "80") or a list of values (e.g., "[10, 20, 30]")
 * Expressed either in percentages ("80") or as fractions of 1 ("0.8"). 
 
-#### `tower_spec.zm`
-Measurement height above displacement height in meters.
-
-#### `tower_spec.z0`
-Roughless length in meters
-
-#### `tower_spec.d`
-Displacement height in meters
 
 ### Output
 #### `output_dir`
-Directory to place the output files in.
+Directory/Folder to place the output files in.
 
 #### `spatial_resolution`
 The spatial resolution to use for the polygon in meters per pixel.
