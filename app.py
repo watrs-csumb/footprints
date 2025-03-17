@@ -12,27 +12,35 @@ def main():
     afdat = f"{cfg['input']['file'].replace("\\",'/')}"
     file = pathlib.Path(afdat)
     
+    using_reference_eto = cfg["input"]["weigh_by_eto"]
+    reference_eto_file = cfg["input"]["eto_file"]
+    
     tower_location = cfg["input"]["location"]
     tower_spec = cfg["input"]["tower_spec"]
     blh = cfg["input"]["boundary_layer_height"]
     contour = cfg["input"]["source_contour_ratio"]
-    hemisphere = cfg["input"]["hemisphere"]
+    
     outputdir = cfg["output"]["output_dir"]
     resolution = cfg["output"]["spatial_resolution"]
     overlap_threshold = cfg["output"]["overlap_threshold"]
     
     # Validate input data exists.
     if not file.exists():
-        raise FileNotFoundError(f"File {afdat} does not exist")
+        raise FileNotFoundError(f"File '{afdat}' could not be found.")
     
     # Validate output directory exists.
     if not pathlib.Path(outputdir).exists() or not pathlib.Path(outputdir).is_dir():
         raise NotADirectoryError(f"Directory {outputdir} does not exist")
     
+    if type(using_reference_eto) is not bool:
+        raise TypeError("weigh_by_eto must be a boolean")
+    
+    if using_reference_eto:
+        if not pathlib.Path(reference_eto_file).exists():
+            raise FileNotFoundError(f"File '{reference_eto_file}' could not be found.")
+    
     if type(tower_spec) is not dict:
         raise TypeError("Tower specification must be a dictionary")
-    if type(hemisphere) is not str:
-        raise TypeError("Hemisphere must be a string")
     if type(resolution) is not int or resolution <= 0:
         raise ValueError("Spatial resolution must be a positive integer")
     if (type(blh) not in [float, int] and type(blh) is not int) or blh < 0.:
@@ -43,9 +51,10 @@ def main():
         raise ValueError("Overlap threshold must be a number between 0 and 1")
     
     df = pd.read_csv(afdat)
+    rdf = pd.read_csv(reference_eto_file) if using_reference_eto else None
     
     # Create footprint object.
-    footprint = Footprint(tower_location, tower_spec, hemisphere)
+    footprint = Footprint(tower_location, tower_spec)
     
     # Override footprint parameters.
     if blh:
@@ -54,7 +63,7 @@ def main():
         footprint.contour_src_pct = contour
     
     # Attach data to object then draw footprint and create a raster.
-    footprint_raster = footprint.attach(df).draw().rasterize(resolution)
+    footprint_raster = footprint.attach(df, rdf).draw().rasterize(resolution)
     # Create a polygon from the raster.
     polygon = footprint_raster.polygonize(overlap_threshold)
     

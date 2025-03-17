@@ -21,8 +21,7 @@ class Footprint:
     
     def __init__(self, 
                 tower_location: tuple[float, float],
-                tower_spec: dict[str, float | int],
-                hemisphere: str = "North"):
+                tower_spec: dict[str, float | int]):
         """
         Initialize the Footprint object.
 
@@ -34,8 +33,6 @@ class Footprint:
             A dictionary with the following required keys:
                 - zm: The height of the measurement in meters.
                 - z0 or umean: The surface roughness length in meters or the mean wind speed in meters per second.
-        hemisphere : str, optional
-            The hemisphere of the tower location, either 'North' or 'South'. Default is 'North'.
 
         Notes
         -----
@@ -44,7 +41,6 @@ class Footprint:
         """
         self.latitude = tower_location[0]
         self.longitude = tower_location[1]
-        self.hemisphere = hemisphere
         self._ws_limit_quantile = 0.95
         
         self.utm_crs: str = ""
@@ -52,6 +48,7 @@ class Footprint:
         self.northing: float = 0.0
         self.raster: np.ndarray | None = None
         self.data: pd.DataFrame | None = None
+        self.reference_eto: pd.DataFrame | None = None
         self.geometry: gpd.GeoDataFrame | None = None
         self.transform: Affine | None = None
         
@@ -99,7 +96,7 @@ class Footprint:
         transformer = Transformer.from_crs("epsg:4326", self.utm_crs)
         self.easting, self.northing = transformer.transform(self.latitude, self.longitude)
     
-    def attach(self, data: pd.DataFrame) -> Self:
+    def attach(self, data: pd.DataFrame, reference_eto: pd.DataFrame | None = None) -> Self:
         """
         Attach a pandas DataFrame to the Footprint object.
 
@@ -138,6 +135,12 @@ class Footprint:
         # Convert to datetime.
         self.data["date_time"] = pd.to_datetime(self.data["date_time"])
         
+        if reference_eto is not None:
+            start_date = self.data["date_time"].dt.date.min()
+            end_date = self.data["date_time"].dt.date.max()
+            reference_eto["date"] = pd.to_datetime(reference_eto["date"])
+            self.reference_eto = reference_eto[reference_eto["date"].dt.date.between(start_date, end_date)][["date", "gridMET_ETo"]]
+        
         # Separate year month day etc.
         self.data["yyyy"] = self.data["date_time"].dt.year
         self.data["mm"] = self.data["date_time"].dt.month
@@ -146,7 +149,7 @@ class Footprint:
         self.data["MM"] = self.data["date_time"].dt.minute
         
         # Rearrange columns.
-        self.data = self.data[["yyyy", "mm", "day", "HH", "MM", "instr_height_m", "canopy_height_m", "z0", "WS", "MO_LENGTH", "V_SIGMA", "USTAR", "WD"]]
+        self.data = self.data[["date_time", "yyyy", "mm", "day", "HH", "MM", "instr_height_m", "canopy_height_m", "z0", "WS", "MO_LENGTH", "V_SIGMA", "USTAR", "WD"]]
         
         # Rename columns.
         self.data = self.data.rename(
@@ -155,8 +158,7 @@ class Footprint:
                      "WS": "u_mean", 
                      "MO_LENGTH": "L", 
                      "V_SIGMA": "sigma_v",
-                     "USTAR": "u_star", 
-
+                     "USTAR": "u_star",
                      "WD": "wind_dir"})
 
         # Subset to only include data between 9 AM and 3PM.
@@ -217,8 +219,19 @@ class Footprint:
                     fig = False
                 )
                 
-                xr = np.array(footprint["xr"][0]) + self.easting
-                yr = np.array(footprint["yr"][0]) + self.northing
+                x_data = np.array(footprint["xr"][0])
+                y_data = np.array(footprint["yr"][0])
+                
+                # If reference eto is provided, weigh the xr,yr arrays by the fraction of eto data from total eto data.
+                if self.reference_eto is not None:
+                    date_mask = self.reference_eto["date"].dt.date == row["date_time"].date()
+                    eto = self.reference_eto[date_mask]["gridMET_ETo"].values[0]
+                    
+                    xr = x_data * (eto / self.reference_eto["gridMET_ETo"].sum())
+                    yr = y_data * (eto / self.reference_eto["gridMET_ETo"].sum())
+                
+                xr = x_data + self.easting
+                yr = y_data + self.northing
                 
                 # Create polygon from xr, yr coordinates.
                 polygon = Polygon(zip(xr, yr))

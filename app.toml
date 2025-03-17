@@ -3,8 +3,12 @@
 file                    = "./data/MB_LET_S2_pi_qc_20250314.csv"
 # Latitude and longitude of tower location.
 location                = [36.456667, -121.382222]
-# Hemisphere of tower location.
-hemisphere              = "North"
+
+# Weight by reference ETo
+weigh_by_eto           = false
+# Reference ET data input. Ignored if `weigh_by_eto` is `false`.
+eto_file                = "./data/LETTUCE2024_fluxdataqaqc_20250317.csv"
+
 # Estimated height of the boundary layer in meters.
 boundary_layer_height   = 2000
 # Percentage of source area for which to provide contours, must be between 10% and 90%. 
