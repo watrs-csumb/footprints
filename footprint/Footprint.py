@@ -161,7 +161,7 @@ class Footprint:
         
         return self
     
-    def draw(self) -> Self:
+    def draw(self, max_rows: int) -> Self:
         """
         Generate footprint polygons from the attached data.
 
@@ -195,7 +195,7 @@ class Footprint:
         polygons = []
         
         for index, row in self.data.iterrows():
-            if index >= 300: # type: ignore
+            if max_rows > 0 and index >= max_rows: # type: ignore
                 break
             
             try:

@@ -22,6 +22,8 @@ def main():
     blh = cfg["input"]["boundary_layer_height"]
     contour = cfg["input"]["source_contour_ratio"]
     
+    max_rows = cfg["input"]["max_rows"]
+    
     outputdir = cfg["output"]["output_dir"]
     resolution = cfg["output"]["spatial_resolution"]
     overlap_threshold = cfg["output"]["overlap_threshold"]
@@ -63,7 +65,7 @@ def main():
         footprint.contour_src_pct = contour
     
     # Attach data to object then draw footprint and create a raster.
-    footprint_raster = footprint.attach(df, rdf).draw().rasterize(resolution)
+    footprint_raster = footprint.attach(df, rdf).draw(max_rows).rasterize(resolution)
     # Create a polygon from the raster.
     polygon = footprint_raster.polygonize(overlap_threshold)
     
@@ -111,7 +113,7 @@ def main():
         shape_data = rasterio.features.rasterize(
             shape,
             out_shape=footprint_raster.raster.shape,
-            transform=footprint_raster.transform,
+            transform=footprint_raster.transform, # type: ignore
             fill=0)
         
         

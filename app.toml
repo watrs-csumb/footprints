@@ -5,7 +5,7 @@ file                    = "./data/MB_LET_S2_pi_qc_20250317.csv"
 location                = [36.456667, -121.382222]
 
 # Weight by reference ETo
-weigh_by_eto           = true
+weigh_by_eto           = false
 # Reference ET data input. Ignored if `weigh_by_eto` is `false`.
 eto_file                = "./data/LETTUCE2024_fluxdataqaqc_20250317.csv"
 
@@ -15,6 +15,9 @@ boundary_layer_height   = 2000
 # Can be either a single value (e.g., "80") or a list of values (e.g., "[10, 20, 30]")
 # Expressed either in percentages ("80") or as fractions of 1 ("0.8"). 
 source_contour_ratio    = [90]
+
+# Maximum number of rows to read from the input file (-1 to include all).
+max_rows                = -1
 
 [output]
 # Path to output directory.
