@@ -1,6 +1,9 @@
 from footprint import Footprint
 
 import pathlib
+import rasterio
+import rasterio.features
+import rasterio.mask
 import tomllib
 
 import matplotlib.pyplot as plt
@@ -86,6 +89,34 @@ def main():
     ax.set_ylabel("Northing (m)")
     ax.set_title(f"Tower Footprint Polygon\n({tower_location[0]}, {tower_location[1]})")
     plt.savefig(f"{outputdir}{file.stem}_footprint_polygon.png")
+    
+    # Export raster.
+    with rasterio.open(
+        f"{outputdir}{file.stem}_footprint_raster.tif", 
+        "w+",
+        transform=footprint_raster.transform,
+        crs=footprint_raster.utm_crs,
+        driver="GTiff",
+        count=2,
+        dtype=footprint_raster.raster.dtype,
+        width=footprint_raster.raster.shape[1],
+        height=footprint_raster.raster.shape[0]) as dst:
+        
+        dst.write(footprint_raster.raster, 1)
+        dst.set_band_description(1, "Footprint Overlaps")
+        
+        # Get the polygon from the footprint's geodataframe.
+        shape = [feature["geometry"] for index, feature in polygon.iterrows()]
+        
+        shape_data = rasterio.features.rasterize(
+            shape,
+            out_shape=footprint_raster.raster.shape,
+            transform=footprint_raster.transform,
+            fill=0)
+        
+        
+        dst.write(shape_data, 2)
+        dst.set_band_description(2, "Footprint Mask")
 
 if __name__ == "__main__":
     main()
