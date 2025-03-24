@@ -192,6 +192,7 @@ class Footprint:
             raise ValueError("data must be set before drawing.")
         
         # Empty list to hold all footprint polygons.
+        times = []
         polygons = []
         
         for index, row in self.data.iterrows():
@@ -229,6 +230,7 @@ class Footprint:
                 # Create polygon from xr, yr coordinates.
                 polygon = Polygon(zip(xr, yr))
                 polygons.append(polygon)
+                times.append(row["date_time"])
             except KeyError as e:
                 print(f"KeyError in row {index}: {e}")
             except ValueError as e:
@@ -237,7 +239,7 @@ class Footprint:
                 print(f"Error in row {index}: {e}")
         
         # Create GeoDataFrame from all collected polygons at once.
-        self.geometry = gpd.GeoDataFrame(geometry = polygons, crs = self.utm_crs) # type: ignore
+        self.geometry = gpd.GeoDataFrame(geometry = polygons, index=times, crs = self.utm_crs) # type: ignore
         
         # Validate an output.
         if not self.geometry.empty:
