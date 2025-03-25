@@ -1,14 +1,19 @@
 from footprint import Footprint
 
+import sys
 import pathlib
-import rasterio
-import rasterio.features
-import rasterio.mask
-import tomllib
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
+try:
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+    import rasterio
+    import rasterio.features
+    import rasterio.mask
+    import tomllib
+except ImportError:
+    print("Required dependencies not found. Please install them using 'pip install -r requirements.txt'")
+    sys.exit(1)
 
 def main():
     cfg = tomllib.load(open("app.toml", "rb"))

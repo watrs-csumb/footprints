@@ -118,6 +118,9 @@ class Footprint:
 
         The `attach` method will subset the data to only include data between 9 AM and 3PM.
         """
+        if Footprint._req_columns not in data.columns:
+            raise ValueError(f"Data does not contain at least one of the required columns: {Footprint._req_columns}")
+        
         self.data = data[Footprint._req_columns].copy()
         
         # Filter WS (wind speed) so outliers are removed.
@@ -246,7 +249,7 @@ class Footprint:
             minx, miny, maxx, maxy = self.geometry.union_all().bounds
             print(f"Overall extent: minx = {minx}, miny = {miny}, maxx = {maxx}, maxy = {maxy}")
         else:
-            print("No polygons were processed.")
+            print("No polygons were processed. Input data did not return any valid results.")
         
         return self
     
