@@ -40,6 +40,10 @@ def main():
     # Validate output directory exists.
     if not pathlib.Path(outputdir).exists() or not pathlib.Path(outputdir).is_dir():
         raise NotADirectoryError(f"Directory {outputdir} does not exist")
+
+    # Append a trailing / if missing to avoid file path issues.
+    if not outputdir.endswith("/"):
+        outputdir += "/"
     
     if type(using_reference_eto) is not bool:
         raise TypeError("weigh_by_eto must be a boolean")
