@@ -78,6 +78,8 @@ Percentage of source area for which to provide contours, must be between 10% and
 * Can be either a single value (e.g., "80") or a list of values (e.g., "[10, 20, 30]")
 * Expressed either in percentages ("80") or as fractions of 1 ("0.8"). 
 
+#### `max_rows`
+Specify the amount of rows that will be read from input data. Use `-1` to read all rows.
 
 ### Output
 #### `output_dir`
