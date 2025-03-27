@@ -118,7 +118,7 @@ class Footprint:
 
         The `attach` method will subset the data to only include data between 9 AM and 3PM.
         """
-        if Footprint._req_columns not in data.columns:
+        if False in [col in data.columns for col in Footprint._req_columns]:
             raise ValueError(f"Data does not contain at least one of the required columns: {Footprint._req_columns}")
         
         self.data = data[Footprint._req_columns].copy()
