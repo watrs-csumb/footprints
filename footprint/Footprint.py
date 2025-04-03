@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Self
 from .core import FPP
 
@@ -88,7 +89,7 @@ class Footprint:
         self.utm_crs = f"+proj=utm +zone={utm_zone} +datum=WGS84 +units=m +no_defs"  # create UTM CRS
         
         transformer = Transformer.from_crs("epsg:4326", self.utm_crs)
-        self.easting, self.northing = transformer.transform(self.latitude, self.longitude)
+        self.easting, self.northing = transformer.transform(self.latitude, self.longitude) # type: ignore
     
     def attach(self, data: pd.DataFrame, reference_eto: pd.DataFrame | None = None) -> Self:
         """
@@ -219,14 +220,6 @@ class Footprint:
                 x_data = np.array(footprint["xr"][0])
                 y_data = np.array(footprint["yr"][0])
                 
-                # If reference eto is provided, weigh the xr,yr arrays by the fraction of eto data from total eto data.
-                if self.reference_eto is not None:
-                    date_mask = self.reference_eto["date"].dt.date == row["date_time"].date()
-                    eto = self.reference_eto[date_mask]["gridMET_ETo"].values[0]
-                    
-                    xr = x_data * (eto / self.reference_eto["gridMET_ETo"].sum())
-                    yr = y_data * (eto / self.reference_eto["gridMET_ETo"].sum())
-                
                 xr = x_data + self.easting
                 yr = y_data + self.northing
                 
@@ -234,10 +227,6 @@ class Footprint:
                 polygon = Polygon(zip(xr, yr))
                 polygons.append(polygon)
                 times.append(row["date_time"])
-            except KeyError as e:
-                print(f"KeyError in row {index}: {e}")
-            except ValueError as e:
-                print(f"ValueError in row {index}: {e}")
             except Exception as e:
                 print(f"Error in row {index}: {e}")
         
@@ -282,29 +271,50 @@ class Footprint:
         """
         if self.geometry is None:
             raise ValueError("geometry must be set before rasterizing.")
+        poly_data = self.geometry.reset_index().copy()
         
-        minx, miny, maxx, maxy = self.geometry.union_all().bounds
+        minx, miny, maxx, maxy = poly_data.union_all().bounds
         width = int((maxx - minx) / resolution)
         height = int((maxy - miny) / resolution)
         
+        poly_data["date"] = pd.to_datetime(poly_data["index"]).dt.date
         self.transform = from_origin(minx, maxy, resolution, resolution)
-        self.raster = np.zeros((height, width), dtype=np.uint8)
+        raster = np.zeros((height, width, poly_data["date"].nunique()), dtype=np.uint8)
         
-        for index, row in self.geometry.iterrows():
-            try:
-                polygon = [row["geometry"]]
-                raster = features.rasterize(polygon, 
-                                            out_shape = (height, width), 
-                                            transform = self.transform, 
-                                            fill = 0)
-                self.raster += raster.astype(self.raster.dtype)
-                
-            except KeyError as e:
-                print(f"KeyError in row {index}: {e}")
-            except ValueError as e:
-                print(f"ValueError in row {index}: {e}")
-            except Exception as e:
-                print(f"Error in row {index}: {e}")
+        i = 0
+        def calc_daily_overlaps(group):
+            nonlocal i
+            assert self.transform
+            daily_raster = np.zeros((height, width), dtype=np.uint8)
+            for index, row in group.iterrows():
+                try: 
+                    polygon = [row["geometry"]]
+                    row_raster = features.rasterize(polygon, 
+                        out_shape = (height, width), 
+                        transform = self.transform, 
+                        all_touched=True,
+                        fill = 0)
+                    
+                    # If reference eto is provided, weigh the overlap counts by the fraction of eto data from total eto data.
+                    if self.reference_eto is not None:
+                        date_mask = self.reference_eto["date"].dt.date == row["date"]
+                        eto = self.reference_eto[date_mask]["gridMET_ETo"].values[0]
+                        daily_raster = np.ceil(daily_raster * (eto / self.reference_eto["gridMET_ETo"].sum())).astype(daily_raster.dtype)
+                    
+                    daily_raster += row_raster.astype(daily_raster.dtype)
+                except KeyError as e:
+                    print(f"KeyError in row {index}: {e}")
+                except ValueError as e:
+                    print(f"ValueError in row {index}: {e}")
+                except Exception as e:
+                    print(f"Error in row {index}: {e}")
+            
+            raster[:, :, i] = daily_raster
+            i+=1
+        
+        poly_data.groupby("date").apply(calc_daily_overlaps)
+        
+        self.raster = raster.sum(axis=2, dtype=np.uint16)
         
         return self
     
