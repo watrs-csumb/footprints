@@ -231,7 +231,7 @@ class Footprint:
                 print(f"Error in row {index}: {e}")
         
         # Create GeoDataFrame from all collected polygons at once.
-        self.geometry = gpd.GeoDataFrame(geometry = polygons, index=times, crs = self.utm_crs) # type: ignore
+        self.geometry = gpd.GeoDataFrame({"times": times, "geometry": polygons}, crs = self.utm_crs) # type: ignore
         
         # Validate an output.
         if not self.geometry.empty:
@@ -277,7 +277,7 @@ class Footprint:
         width = int((maxx - minx) / resolution)
         height = int((maxy - miny) / resolution)
         
-        poly_data["date"] = pd.to_datetime(poly_data["index"]).dt.date
+        poly_data["date"] = pd.to_datetime(poly_data["times"]).dt.date
         self.transform = from_origin(minx, maxy, resolution, resolution)
         raster = np.zeros((height, width, poly_data["date"].nunique()), dtype=np.uint8)
         
@@ -285,7 +285,9 @@ class Footprint:
         def calc_daily_overlaps(group):
             nonlocal i
             assert self.transform
+            
             daily_raster = np.zeros((height, width), dtype=np.uint8)
+            group_date = group["date"].iloc[0]
             for index, row in group.iterrows():
                 try: 
                     polygon = [row["geometry"]]
@@ -308,6 +310,12 @@ class Footprint:
                     print(f"ValueError in row {index}: {e}")
                 except Exception as e:
                     print(f"Error in row {index}: {e}")
+            
+            # If reference eto is provided, weigh the overlap counts by the fraction of eto data from total eto data.
+            if self.reference_eto is not None:
+                date_mask = self.reference_eto["date"].dt.date == group_date
+                eto = self.reference_eto[date_mask]["gridMET_ETo"].values[0]
+                daily_raster = np.multiply(daily_raster, (eto / self.reference_eto["gridMET_ETo"].sum()), dtype=np.float16)
             
             raster[:, :, i] = daily_raster
             i+=1
