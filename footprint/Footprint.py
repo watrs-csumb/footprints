@@ -1,4 +1,3 @@
-from datetime import date
 from typing import Self
 from .core import FPP
 
@@ -51,6 +50,7 @@ class Footprint:
         self.reference_eto: pd.DataFrame | None = None
         self.geometry: gpd.GeoDataFrame | None = None
         self.transform: Affine | None = None
+        self.data_points: dict[str, int] = {}
         
         self._to_utm()
     
@@ -199,6 +199,9 @@ class Footprint:
         times = []
         polygons = []
         
+        # Create a series that is the aggregate of total number of rows for each day.
+        self.rows_per_day = self.data.groupby(["yyyy", "mm", "day"]).size().reset_index(name="count")
+        
         for index, row in self.data.iterrows():
             if max_rows > 0 and index >= max_rows: # type: ignore
                 break
@@ -227,6 +230,12 @@ class Footprint:
                 polygon = Polygon(zip(xr, yr))
                 polygons.append(polygon)
                 times.append(row["date_time"])
+                
+                if not self.data_points.get(str(row["date_time"].date())):
+                    self.data_points[str(row["date_time"].date())] = 1
+                else:
+                    self.data_points[str(row["date_time"].date())] += 1
+                
             except Exception as e:
                 print(f"Error in row {index}: {e}")
         
@@ -282,6 +291,7 @@ class Footprint:
         raster = np.zeros((height, width, poly_data["date"].nunique()), dtype=np.uint8)
         
         i = 0
+        skipped = 0
         def calc_daily_overlaps(group):
             nonlocal i
             assert self.transform
@@ -297,12 +307,6 @@ class Footprint:
                         all_touched=True,
                         fill = 0)
                     
-                    # If reference eto is provided, weigh the overlap counts by the fraction of eto data from total eto data.
-                    if self.reference_eto is not None:
-                        date_mask = self.reference_eto["date"].dt.date == row["date"]
-                        eto = self.reference_eto[date_mask]["gridMET_ETo"].values[0]
-                        daily_raster = np.ceil(daily_raster * (eto / self.reference_eto["gridMET_ETo"].sum())).astype(daily_raster.dtype)
-                    
                     daily_raster += row_raster.astype(daily_raster.dtype)
                 except KeyError as e:
                     print(f"KeyError in row {index}: {e}")
@@ -311,6 +315,11 @@ class Footprint:
                 except Exception as e:
                     print(f"Error in row {index}: {e}")
             
+            # Weigh the overlap counts by the total number of valid rows for the day.
+            # First, get the date of the current row from the datapoints dictionary.
+            valid_rows_count = self.data_points[str(group_date)]
+            # Then, divide the overlap count by the valid row count.
+            daily_raster = np.divide(daily_raster, valid_rows_count, dtype=np.float16)
             # If reference eto is provided, weigh the overlap counts by the fraction of eto data from total eto data.
             if self.reference_eto is not None:
                 date_mask = self.reference_eto["date"].dt.date == group_date
@@ -320,9 +329,14 @@ class Footprint:
             raster[:, :, i] = daily_raster
             i+=1
         
-        poly_data.groupby("date").apply(calc_daily_overlaps)
+        poly_data.groupby("date").apply(calc_daily_overlaps) # type: ignore
         
-        self.raster = raster.sum(axis=2, dtype=np.uint16)
+        print(f"Skipped {skipped} of {poly_data["date"].nunique()} days.")
+        
+        # Sum the raster along the third axis to get the total overlap count.
+        raster = raster.sum(axis=2, dtype=np.float16)
+        # Then normalize based on max weighed overlaps.
+        self.raster = np.divide(raster, raster.max(), dtype=np.float32)
         
         return self
     
@@ -358,8 +372,7 @@ class Footprint:
             raise ValueError("raster must be set before polygonizing.")
         assert self.transform
         
-        max_overlaps = np.max(self.raster)
-        mask = self.raster > (max_overlaps * threshold)
+        mask = self.raster > threshold
         
         shapes_gen = shapes(self.raster, mask = mask, transform = self.transform)
         polygons = [shape(geom) for geom, _ in shapes_gen]
