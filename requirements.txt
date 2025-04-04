@@ -4,3 +4,4 @@ geopandas       # installs shapely
 requests        # installs urllib3
 rasterio
 shapelysmooth
+tqdm            # for progress bars
