@@ -12,6 +12,7 @@ from rasterio.transform import from_origin, Affine
 from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from shapelysmooth import taubin_smooth
+from tqdm import tqdm
 
 BOUNDARY_LAYER_HEIGHT = 2000
 CONTOUR_SRC_PCT = [90]
@@ -202,7 +203,7 @@ class Footprint:
         # Create a series that is the aggregate of total number of rows for each day.
         self.rows_per_day = self.data.groupby(["yyyy", "mm", "day"]).size().reset_index(name="count")
         
-        for index, row in self.data.iterrows():
+        for index, row in tqdm(self.data.iterrows(), total=self.data.shape[0]):
             if max_rows > 0 and index >= max_rows: # type: ignore
                 break
             
@@ -236,8 +237,8 @@ class Footprint:
                 else:
                     self.data_points[str(row["date_time"].date())] += 1
                 
-            except Exception as e:
-                print(f"Error in row {index}: {e}")
+            except Exception:
+                continue
         
         # Create GeoDataFrame from all collected polygons at once.
         self.geometry = gpd.GeoDataFrame({"times": times, "geometry": polygons}, crs = self.utm_crs) # type: ignore
@@ -308,10 +309,6 @@ class Footprint:
                         fill = 0)
                     
                     daily_raster += row_raster.astype(daily_raster.dtype)
-                except KeyError as e:
-                    print(f"KeyError in row {index}: {e}")
-                except ValueError as e:
-                    print(f"ValueError in row {index}: {e}")
                 except Exception as e:
                     print(f"Error in row {index}: {e}")
             
