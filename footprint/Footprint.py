@@ -9,6 +9,7 @@ from pyproj import Transformer
 from rasterio import features
 from rasterio.features import shapes
 from rasterio.transform import from_origin, Affine
+from shapely import MultiPolygon
 from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from shapelysmooth import taubin_smooth
@@ -376,10 +377,20 @@ class Footprint:
         
         combined_polygon = unary_union(polygons)
         
-        gdf = gpd.GeoDataFrame(geometry = [combined_polygon], crs = self.utm_crs) # type: ignore
+        if isinstance(combined_polygon, MultiPolygon):
+            footprint_segments = []
+            for geo in combined_polygon.geoms:
+                footprint_segments.append(unary_union(geo))
+            combined_polygon = footprint_segments
+        
+        gdf = gpd.GeoDataFrame(
+            geometry = combined_polygon if isinstance(combined_polygon, list) else [combined_polygon], 
+            crs = self.utm_crs
+        )
         
         try:
-            gdf.loc[0, "geometry"] = taubin_smooth(gdf.loc[0, "geometry"], steps = 50) # type: ignore
+            # Smoothen each polygon within the footprint.
+            gdf["geometry"] = gdf["geometry"].apply(lambda x: taubin_smooth(x, steps = 50))
         except Exception as e:
             print(f"Error in smoothing polygon: {e}")
         
