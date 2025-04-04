@@ -5,6 +5,7 @@ import pathlib
 
 try:
     import matplotlib.pyplot as plt
+    import matplotlib.ticker as mtick
     import numpy as np
     import pandas as pd
     import rasterio
@@ -95,7 +96,7 @@ def main():
     ax.set_xlabel("Easting (m)")
     ax.set_ylabel("Northing (m)")
     ax.set_title(f"Accumulated Raster\n({tower_location[0]}, {tower_location[1]})")
-    fig.colorbar(im, ax=ax, label="Overlap Contribution")
+    fig.colorbar(im, ax=ax, label="Overlap Contribution", format=mtick.PercentFormatter(1.0))
     plt.savefig(f"{outputdir}{file.stem}_footprint_heat.png")
     
     fig, ax = plt.subplots(figsize = (6, 6))
