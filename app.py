@@ -95,7 +95,7 @@ def main():
     ax.set_xlabel("Easting (m)")
     ax.set_ylabel("Northing (m)")
     ax.set_title(f"Accumulated Raster\n({tower_location[0]}, {tower_location[1]})")
-    fig.colorbar(im, ax=ax, label="Overlap Count")
+    fig.colorbar(im, ax=ax, label="Overlap Contribution")
     plt.savefig(f"{outputdir}{file.stem}_footprint_heat.png")
     
     fig, ax = plt.subplots(figsize = (6, 6))
@@ -118,7 +118,7 @@ def main():
         height=footprint_raster.raster.shape[0]) as dst:
         
         dst.write(footprint_raster.raster, 1)
-        dst.set_band_description(1, "Footprint Overlaps")
+        dst.set_band_description(1, "Accumulated Overlap Contribution")
         
         # Get the polygon from the footprint's geodataframe.
         shape = [feature["geometry"] for index, feature in polygon.iterrows()]
