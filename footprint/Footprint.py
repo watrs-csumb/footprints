@@ -254,7 +254,7 @@ class Footprint:
         
         return self
     
-    def rasterize(self, resolution: int = 1) -> Self:
+    def rasterize(self, resolution: int = 1, daily_min_success_rate: float = 0.5) -> Self:
         """
         Rasterize the footprint polygons to a numpy array.
 
@@ -305,7 +305,7 @@ class Footprint:
             full_count = self.rows_per_day[(self.rows_per_day["yyyy"] == group_date.year) & (self.rows_per_day["mm"] == group_date.month) & (self.rows_per_day["day"] == group_date.day)]
             full_count = full_count["count"].iloc[0]
             
-            if (valid_rows_count / full_count) < 0.5:
+            if (valid_rows_count / full_count) < daily_min_success_rate:
                 skipped += 1
                 return
             
@@ -347,7 +347,7 @@ class Footprint:
         
         return self
     
-    def polygonize(self, threshold: float = 1.0) -> gpd.GeoDataFrame:
+    def polygonize(self, threshold: float = 1.0, smoothing_factor: int = 50) -> gpd.GeoDataFrame:
         """
         Create a single polygon from rasters that meet overlap threshold.
 
@@ -399,7 +399,7 @@ class Footprint:
         
         try:
             # Smoothen each polygon within the footprint.
-            gdf["geometry"] = gdf["geometry"].apply(lambda x: taubin_smooth(x, steps = 50))
+            gdf["geometry"] = gdf["geometry"].apply(lambda x: taubin_smooth(x, steps = smoothing_factor))
         except Exception as e:
             print(f"Error in smoothing polygon: {e}")
         
