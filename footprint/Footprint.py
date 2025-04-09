@@ -204,7 +204,8 @@ class Footprint:
         # Create a series that is the aggregate of total number of rows for each day.
         self.rows_per_day = self.data.groupby(["yyyy", "mm", "day"]).size().reset_index(name="count")
         
-        for index, row in tqdm(self.data.iterrows(), total=self.data.shape[0]):
+        progress_bar_size = self.data.shape[0] if max_rows < 0 else max_rows
+        for index, row in tqdm(self.data.iterrows(), total=progress_bar_size):
             if max_rows > 0 and index >= max_rows: # type: ignore
                 break
             
@@ -296,10 +297,19 @@ class Footprint:
         skipped = 0
         def calc_daily_overlaps(group):
             nonlocal i
+            nonlocal skipped
             assert self.transform
+            group_date = group["date"].iloc[0]
+            valid_rows_count = self.data_points[str(group_date)]
+            
+            full_count = self.rows_per_day[(self.rows_per_day["yyyy"] == group_date.year) & (self.rows_per_day["mm"] == group_date.month) & (self.rows_per_day["day"] == group_date.day)]
+            full_count = full_count["count"].iloc[0]
+            
+            if (valid_rows_count / full_count) < 0.5:
+                skipped += 1
+                return
             
             daily_raster = np.zeros((height, width), dtype=np.uint8)
-            group_date = group["date"].iloc[0]
             for index, row in group.iterrows():
                 try: 
                     polygon = [row["geometry"]]
@@ -315,7 +325,6 @@ class Footprint:
             
             # Weigh the overlap counts by the total number of valid rows for the day.
             # First, get the date of the current row from the datapoints dictionary.
-            valid_rows_count = self.data_points[str(group_date)]
             # Then, divide the overlap count by the valid row count.
             daily_raster = np.divide(daily_raster, valid_rows_count, dtype=np.float16)
             # If reference eto is provided, weigh the overlap counts by the fraction of eto data from total eto data.
