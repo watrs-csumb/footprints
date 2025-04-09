@@ -4,7 +4,8 @@ file                    = "./data/MB_LET_S2_pi_qc_20250317.csv"
 # Latitude and longitude of tower location.
 location                = [36.456667, -121.382222]
 
-# Weight by reference ETo
+# Weight by reference ETo, must be true or false.
+# Multiplies overlap counts by fraction of cummulative ETo for each day.
 weigh_by_eto           = false
 # Reference ET data input. Ignored if `weigh_by_eto` is `false`.
 eto_file                = "./data/LETTUCE2024_fluxdataqaqc_20250317.csv"
