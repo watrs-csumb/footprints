@@ -1,7 +1,11 @@
-from footprint import Footprint
-
 import sys
 import pathlib
+
+try:
+    from footprint import Footprint
+except ImportError:
+    print("Footprint module could not be loaded. Are you in the correct directory?")
+    sys.exit(1)
 
 try:
     import matplotlib.pyplot as plt
@@ -62,9 +66,9 @@ def main():
         raise ValueError("Boundary layer height must be a positive number")
     if type(contour) not in [float, int, list] or np.min(contour) < 0.:
         raise ValueError("Source contour ratio must be positive number(s)")
-    if type(overlap_threshold) not in [float, int] or overlap_threshold < 0 or overlap_threshold > 1:
+    if type(overlap_threshold) is not float or overlap_threshold < 0 or overlap_threshold > 1:
         raise ValueError("Overlap threshold must be a number between 0 and 1")
-    if type(smoothing_factor) not in [float, int] or smoothing_factor < 1.:
+    if type(smoothing_factor) is not int or smoothing_factor < 1.:
         raise ValueError("Smoothing factor must be a number greater than or equal to 1")
     
     df = pd.read_csv(afdat)
