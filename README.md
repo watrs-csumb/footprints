@@ -48,7 +48,10 @@ This is the configuration file and should be the only file you modify. The confi
 
 ### Input
 #### `file`
-Path to the input file. 
+Path to the input file. \
+Input data must contain the following columns (case-sensitive): \
+["date_time", "WS", "USTAR", "WD", "V_SIGMA", "MO_LENGTH", "instr_height_m", "canopy_height_m", "Z0_roughness"]
+
 ```toml
 # Example (relative)
 file = "./mydata.csv"
