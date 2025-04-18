@@ -4,7 +4,8 @@ file                    = "./data/MB_LET_S2_pi_qc_20250317.csv"
 # Latitude and longitude of tower location.
 location                = [36.456667, -121.382222]
 
-# Weight by reference ETo
+# Weight by reference ETo, must be true or false.
+# Multiplies overlap counts by fraction of cummulative ETo for each day.
 weigh_by_eto           = false
 # Reference ET data input. Ignored if `weigh_by_eto` is `false`.
 eto_file                = "./data/LETTUCE2024_fluxdataqaqc_20250317.csv"
@@ -18,6 +19,8 @@ source_contour_ratio    = [90]
 
 # Maximum number of rows to read from the input file (-1 to include all).
 max_rows                = -1
+# Threshold for % of successful footprints are required for each day to be included in the output.
+min_success_rate        = 0.5
 
 [output]
 # Path to output directory.
@@ -25,4 +28,8 @@ output_dir              = "./"
 # Meters per pixel for the output image.
 spatial_resolution      = 1
 # Overlap threshold for polygonization.
-overlap_threshold       = 0.8
+overlap_threshold       = 0.5
+# Number of smoothing steps. 
+# Higher values result in a more rounded contour. 
+# Lower values result in a more jagged contour.
+smoothing_factor = 50

@@ -1,4 +1,3 @@
-from datetime import date
 from typing import Self
 from .core import FPP
 
@@ -10,9 +9,11 @@ from pyproj import Transformer
 from rasterio import features
 from rasterio.features import shapes
 from rasterio.transform import from_origin, Affine
+from shapely import MultiPolygon
 from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from shapelysmooth import taubin_smooth
+from tqdm import tqdm
 
 BOUNDARY_LAYER_HEIGHT = 2000
 CONTOUR_SRC_PCT = [90]
@@ -51,6 +52,7 @@ class Footprint:
         self.reference_eto: pd.DataFrame | None = None
         self.geometry: gpd.GeoDataFrame | None = None
         self.transform: Affine | None = None
+        self.data_points: dict[str, int] = {}
         
         self._to_utm()
     
@@ -199,7 +201,11 @@ class Footprint:
         times = []
         polygons = []
         
-        for index, row in self.data.iterrows():
+        # Create a series that is the aggregate of total number of rows for each day.
+        self.rows_per_day = self.data.groupby(["yyyy", "mm", "day"]).size().reset_index(name="count")
+        
+        progress_bar_size = self.data.shape[0] if max_rows < 0 else max_rows
+        for index, row in tqdm(self.data.iterrows(), total=progress_bar_size):
             if max_rows > 0 and index >= max_rows: # type: ignore
                 break
             
@@ -227,11 +233,17 @@ class Footprint:
                 polygon = Polygon(zip(xr, yr))
                 polygons.append(polygon)
                 times.append(row["date_time"])
-            except Exception as e:
-                print(f"Error in row {index}: {e}")
+                
+                if not self.data_points.get(str(row["date_time"].date())):
+                    self.data_points[str(row["date_time"].date())] = 1
+                else:
+                    self.data_points[str(row["date_time"].date())] += 1
+                
+            except Exception:
+                continue
         
         # Create GeoDataFrame from all collected polygons at once.
-        self.geometry = gpd.GeoDataFrame(geometry = polygons, index=times, crs = self.utm_crs) # type: ignore
+        self.geometry = gpd.GeoDataFrame({"times": times, "geometry": polygons}, crs = self.utm_crs) # type: ignore
         
         # Validate an output.
         if not self.geometry.empty:
@@ -242,7 +254,7 @@ class Footprint:
         
         return self
     
-    def rasterize(self, resolution: int = 1) -> Self:
+    def rasterize(self, resolution: int = 1, daily_min_success_rate: float = 0.5) -> Self:
         """
         Rasterize the footprint polygons to a numpy array.
 
@@ -277,14 +289,28 @@ class Footprint:
         width = int((maxx - minx) / resolution)
         height = int((maxy - miny) / resolution)
         
-        poly_data["date"] = pd.to_datetime(poly_data["index"]).dt.date
+        poly_data["date"] = pd.to_datetime(poly_data["times"]).dt.date
         self.transform = from_origin(minx, maxy, resolution, resolution)
         raster = np.zeros((height, width, poly_data["date"].nunique()), dtype=np.uint8)
         
         i = 0
+        skipped = 0
         def calc_daily_overlaps(group):
             nonlocal i
+            nonlocal skipped
+            nonlocal raster
+            
             assert self.transform
+            group_date = group["date"].iloc[0]
+            valid_rows_count = self.data_points[str(group_date)]
+            
+            full_count = self.rows_per_day[(self.rows_per_day["yyyy"] == group_date.year) & (self.rows_per_day["mm"] == group_date.month) & (self.rows_per_day["day"] == group_date.day)]
+            full_count = full_count["count"].iloc[0]
+            
+            if (valid_rows_count / full_count) < daily_min_success_rate:
+                skipped += 1
+                return
+            
             daily_raster = np.zeros((height, width), dtype=np.uint8)
             for index, row in group.iterrows():
                 try: 
@@ -295,30 +321,38 @@ class Footprint:
                         all_touched=True,
                         fill = 0)
                     
-                    # If reference eto is provided, weigh the overlap counts by the fraction of eto data from total eto data.
-                    if self.reference_eto is not None:
-                        date_mask = self.reference_eto["date"].dt.date == row["date"]
-                        eto = self.reference_eto[date_mask]["gridMET_ETo"].values[0]
-                        daily_raster = np.ceil(daily_raster * (eto / self.reference_eto["gridMET_ETo"].sum())).astype(daily_raster.dtype)
-                    
                     daily_raster += row_raster.astype(daily_raster.dtype)
-                except KeyError as e:
-                    print(f"KeyError in row {index}: {e}")
-                except ValueError as e:
-                    print(f"ValueError in row {index}: {e}")
                 except Exception as e:
                     print(f"Error in row {index}: {e}")
+            
+            # Weigh the overlap counts by the total number of valid rows for the day.
+            # First, get the date of the current row from the datapoints dictionary.
+            # Then, divide the overlap count by the valid row count.
+            daily_raster = np.divide(daily_raster, valid_rows_count, dtype=np.float16)
+            # If reference eto is provided, weigh the overlap counts by the fraction of eto data from total eto data.
+            if self.reference_eto is not None:
+                date_mask = self.reference_eto["date"].dt.date == group_date
+                eto = self.reference_eto[date_mask]["gridMET_ETo"].values[0]
+                
+                daily_raster = daily_raster.astype(np.float32)
+                raster = raster.astype(np.float32)
+                daily_raster = daily_raster * (eto / self.reference_eto["gridMET_ETo"].sum())
             
             raster[:, :, i] = daily_raster
             i+=1
         
-        poly_data.groupby("date").apply(calc_daily_overlaps)
+        poly_data.groupby("date").apply(calc_daily_overlaps) # type: ignore
         
-        self.raster = raster.sum(axis=2, dtype=np.uint16)
+        print(f"Skipped {skipped} of {poly_data["date"].nunique()} days.")
+        
+        # Sum the raster along the third axis to get the total overlap count.
+        raster = raster.sum(axis=2, dtype=raster.dtype)
+        # Then normalize based on max weighed overlaps.
+        self.raster = np.divide(raster, raster.max(), dtype=np.float32)
         
         return self
     
-    def polygonize(self, threshold: float = 1.0) -> gpd.GeoDataFrame:
+    def polygonize(self, threshold: float = 1.0, smoothing_factor: int = 50) -> gpd.GeoDataFrame:
         """
         Create a single polygon from rasters that meet overlap threshold.
 
@@ -350,18 +384,27 @@ class Footprint:
             raise ValueError("raster must be set before polygonizing.")
         assert self.transform
         
-        max_overlaps = np.max(self.raster)
-        mask = self.raster > (max_overlaps * threshold)
+        mask = self.raster > threshold
         
         shapes_gen = shapes(self.raster, mask = mask, transform = self.transform)
         polygons = [shape(geom) for geom, _ in shapes_gen]
         
         combined_polygon = unary_union(polygons)
         
-        gdf = gpd.GeoDataFrame(geometry = [combined_polygon], crs = self.utm_crs) # type: ignore
+        if isinstance(combined_polygon, MultiPolygon):
+            footprint_segments = []
+            for geo in combined_polygon.geoms:
+                footprint_segments.append(unary_union(geo))
+            combined_polygon = footprint_segments
+        
+        gdf = gpd.GeoDataFrame(
+            geometry = combined_polygon if isinstance(combined_polygon, list) else [combined_polygon], 
+            crs = self.utm_crs
+        )
         
         try:
-            gdf.loc[0, "geometry"] = taubin_smooth(gdf.loc[0, "geometry"], steps = 50) # type: ignore
+            # Smoothen each polygon within the footprint.
+            gdf["geometry"] = gdf["geometry"].apply(lambda x: taubin_smooth(x, steps = smoothing_factor))
         except Exception as e:
             print(f"Error in smoothing polygon: {e}")
         
