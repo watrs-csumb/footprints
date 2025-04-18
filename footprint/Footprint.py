@@ -346,7 +346,7 @@ class Footprint:
         print(f"Skipped {skipped} of {poly_data["date"].nunique()} days.")
         
         # Sum the raster along the third axis to get the total overlap count.
-        raster = raster.sum(axis=2)
+        raster = raster.sum(axis=2, dtype=raster.dtype)
         # Then normalize based on max weighed overlaps.
         self.raster = np.divide(raster, raster.max(), dtype=np.float32)
         
