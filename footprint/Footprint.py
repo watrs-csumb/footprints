@@ -298,6 +298,8 @@ class Footprint:
         def calc_daily_overlaps(group):
             nonlocal i
             nonlocal skipped
+            nonlocal raster
+            
             assert self.transform
             group_date = group["date"].iloc[0]
             valid_rows_count = self.data_points[str(group_date)]
@@ -331,7 +333,10 @@ class Footprint:
             if self.reference_eto is not None:
                 date_mask = self.reference_eto["date"].dt.date == group_date
                 eto = self.reference_eto[date_mask]["gridMET_ETo"].values[0]
-                daily_raster = np.multiply(daily_raster, (eto / self.reference_eto["gridMET_ETo"].sum()), dtype=np.float16)
+                
+                daily_raster = daily_raster.astype(np.float32)
+                raster = raster.astype(np.float32)
+                daily_raster = daily_raster * (eto / self.reference_eto["gridMET_ETo"].sum())
             
             raster[:, :, i] = daily_raster
             i+=1
@@ -341,7 +346,7 @@ class Footprint:
         print(f"Skipped {skipped} of {poly_data["date"].nunique()} days.")
         
         # Sum the raster along the third axis to get the total overlap count.
-        raster = raster.sum(axis=2, dtype=np.float16)
+        raster = raster.sum(axis=2)
         # Then normalize based on max weighed overlaps.
         self.raster = np.divide(raster, raster.max(), dtype=np.float32)
         
