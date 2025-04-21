@@ -309,7 +309,7 @@ class Footprint:
             
             if (valid_rows_count / full_count) < daily_min_success_rate:
                 skipped += 1
-                return
+                # return
             
             daily_raster = np.zeros((height, width), dtype=np.uint8)
             for index, row in group.iterrows():
@@ -343,7 +343,7 @@ class Footprint:
         
         poly_data.groupby("date").apply(calc_daily_overlaps) # type: ignore
         
-        print(f"Skipped {skipped} of {poly_data["date"].nunique()} days.")
+        # print(f"Skipped {skipped} of {poly_data["date"].nunique()} days.")
         
         # Sum the raster along the third axis to get the total overlap count.
         raster = raster.sum(axis=2, dtype=raster.dtype)
