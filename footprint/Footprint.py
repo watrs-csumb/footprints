@@ -126,9 +126,9 @@ class Footprint:
         
         self.data = data[Footprint._req_columns].copy()
         
-        # Filter WS (wind speed) so outliers are removed.
-        wind_lim = self.data["WS"].quantile(self._ws_limit_quantile)
-        self.data["WS"] = self.data["WS"].clip(upper=wind_lim)
+        # # Filter WS (wind speed) so outliers are removed.
+        # wind_lim = self.data["WS"].quantile(self._ws_limit_quantile)
+        # self.data["WS"] = self.data["WS"].clip(upper=wind_lim)
 
         # Convert to datetime.
         self.data["date_time"] = pd.to_datetime(self.data["date_time"])
@@ -205,7 +205,8 @@ class Footprint:
         self.rows_per_day = self.data.groupby(["yyyy", "mm", "day"]).size().reset_index(name="count")
         
         progress_bar_size = self.data.shape[0] if max_rows < 0 else max_rows
-        for index, row in tqdm(self.data.iterrows(), total=progress_bar_size):
+        progress_bar_obj = tqdm(self.data.iterrows(), desc="Half-hourly Footprints", total=progress_bar_size, position=0, leave=True)
+        for index, row in progress_bar_obj:
             if max_rows > 0 and index >= max_rows: # type: ignore
                 break
             
@@ -238,8 +239,10 @@ class Footprint:
                     self.data_points[str(row["date_time"].date())] = 1
                 else:
                     self.data_points[str(row["date_time"].date())] += 1
-                
-            except Exception:
+            except (ValueError, TypeError):
+                continue
+            except Exception as e:
+                progress_bar_obj.write(str(e))
                 continue
         
         # Create GeoDataFrame from all collected polygons at once.
