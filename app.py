@@ -1,5 +1,8 @@
 import sys
 import pathlib
+import warnings
+
+warnings.simplefilter(action="ignore", category=UserWarning)
 
 try:
     from footprint import Footprint
@@ -91,10 +94,6 @@ def main():
     pathlib.Path(f"{outputdir + file.stem}").mkdir(exist_ok=True)
     polygon.to_file(f"{outputdir + file.stem}/{file.stem}_footprint.shp")
     polygon.to_file(f"{outputdir}{file.stem}_footprint.geojson", driver="GeoJSON")
-    
-    # Export the timeseries data.
-    assert footprint.geometry is not None
-    footprint.geometry.to_file(f"{outputdir + file.stem}/{file.stem}_footprint_timeseries.geojson")
     
     fig, ax = plt.subplots(figsize = (6, 6))
     assert footprint_raster.raster is not None
