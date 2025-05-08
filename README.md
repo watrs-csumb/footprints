@@ -92,7 +92,10 @@ Directory/Folder to place the output files in.
 The spatial resolution to use for the polygon in meters per pixel.
 
 #### `overlap_threshold`
-Percentage adjustment for number of overlaps needed for data to contribute to footprint. Must be between 0 and 1.
+Minimum percentile of max overlaps to be included in footprint . e.g. `0.2` results in overlaps above the 20th percentile to be included.
+
+#### `smoothing_factor`
+The number of pixel steps to smooth. Higher number results in a smoother shape. *See https://pypi.org/project/shapelysmooth/#taubin*
 
 ## app.py
 This is the script application that generates the footprint and exports:

@@ -307,13 +307,6 @@ class Footprint:
             group_date = group["date"].iloc[0]
             valid_rows_count = self.data_points[str(group_date)]
             
-            full_count = self.rows_per_day[(self.rows_per_day["yyyy"] == group_date.year) & (self.rows_per_day["mm"] == group_date.month) & (self.rows_per_day["day"] == group_date.day)]
-            full_count = full_count["count"].iloc[0]
-            
-            if (valid_rows_count / full_count) < daily_min_success_rate:
-                skipped += 1
-                # return
-            
             daily_raster = np.zeros((height, width), dtype=np.uint8)
             for index, row in group.iterrows():
                 try: 
@@ -344,9 +337,8 @@ class Footprint:
             raster[:, :, i] = daily_raster
             i+=1
         
-        poly_data.groupby("date").apply(calc_daily_overlaps) # type: ignore
-        
-        # print(f"Skipped {skipped} of {poly_data["date"].nunique()} days.")
+        tqdm.pandas(desc="Rasterizing Daily Polygons", position=0, leave=True)
+        poly_data.groupby("date").progress_apply(calc_daily_overlaps) # type: ignore
         
         # Sum the raster along the third axis to get the total overlap count.
         raster = raster.sum(axis=2, dtype=raster.dtype)
