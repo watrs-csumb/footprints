@@ -36,7 +36,6 @@ def main():
     contour = cfg["input"]["source_contour_ratio"]
     
     max_rows = cfg["input"]["max_rows"]
-    min_success_rate = cfg["input"]["min_success_rate"]
     
     outputdir = cfg["output"]["output_dir"]
     resolution = cfg["output"]["spatial_resolution"]
@@ -61,8 +60,6 @@ def main():
     if using_reference_eto:
         if not pathlib.Path(reference_eto_file).exists():
             raise FileNotFoundError(f"File '{reference_eto_file}' could not be found.")
-    if type(min_success_rate) is not float or min_success_rate < 0. or min_success_rate > 1.:
-        raise ValueError("Minimum success rate must be a number between 0 and 1")
     if type(resolution) is not int or resolution <= 0:
         raise ValueError("Spatial resolution must be a positive integer")
     if (type(blh) not in [float, int] and type(blh) is not int) or blh < 0.:
@@ -87,7 +84,7 @@ def main():
         footprint.contour_src_pct = contour
     
     # Attach data to object then draw footprint and create a raster.
-    footprint_raster = footprint.attach(df, rdf).draw(max_rows).rasterize(resolution, min_success_rate)
+    footprint_raster = footprint.attach(df, rdf).draw(max_rows).rasterize(resolution)
     # Create a polygon from the raster.
     polygon = footprint_raster.polygonize(overlap_threshold, smoothing_factor)
     

@@ -257,7 +257,7 @@ class Footprint:
         
         return self
     
-    def rasterize(self, resolution: int = 1, daily_min_success_rate: float = 0.5) -> Self:
+    def rasterize(self, resolution: int = 1) -> Self:
         """
         Rasterize the footprint polygons to a numpy array.
 

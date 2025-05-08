@@ -19,8 +19,6 @@ source_contour_ratio    = [90]
 
 # Maximum number of rows to read from the input file (-1 to include all).
 max_rows                = -1
-# Threshold for % of successful footprints are required for each day to be included in the output.
-min_success_rate        = 0.5
 
 [output]
 # Path to output directory.
