@@ -1,14 +1,14 @@
 [input]
 # Path to input file.
-file                    = "./data/MB_LET_S2_pi_qc_20250317.csv"
+file                    = "./data/MB_LET_S1_pi_qc_20250404.csv"
 # Latitude and longitude of tower location.
-location                = [36.456667, -121.382222]
+location                = [36.4568849031, -121.382712914]
 
 # Weight by reference ETo, must be true or false.
 # Multiplies overlap counts by fraction of cummulative ETo for each day.
-weigh_by_eto           = false
+weigh_by_eto           = true
 # Reference ET data input. Ignored if `weigh_by_eto` is `false`.
-eto_file                = "./data/LETTUCE2024_fluxdataqaqc_20250317.csv"
+eto_file                = "./data/MB_LET_S1_fluxdataqaqc_20250404.csv"
 
 # Estimated height of the boundary layer in meters.
 boundary_layer_height   = 2000
@@ -24,11 +24,11 @@ min_success_rate        = 0.5
 
 [output]
 # Path to output directory.
-output_dir              = "./"
+output_dir              = "./data/zab/"
 # Meters per pixel for the output image.
 spatial_resolution      = 1
 # Overlap threshold for polygonization.
-overlap_threshold       = 0.5
+overlap_threshold       = 0.8
 # Number of smoothing steps. 
 # Higher values result in a more rounded contour. 
 # Lower values result in a more jagged contour.
