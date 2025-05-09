@@ -92,6 +92,9 @@ def main():
     polygon.to_file(f"{outputdir + file.stem}/{file.stem}_footprint.shp")
     polygon.to_file(f"{outputdir}{file.stem}_footprint.geojson", driver="GeoJSON")
     
+    if footprint_raster.daily_timeseries is not None:
+        footprint_raster.daily_timeseries.to_file(f"{outputdir}{file.stem}_footprint_timeseries.geojson", driver="GeoJSON")
+    
     fig, ax = plt.subplots(figsize = (6, 6))
     assert footprint_raster.raster is not None
     assert footprint_raster.geometry is not None

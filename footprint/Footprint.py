@@ -53,6 +53,7 @@ class Footprint:
         self.geometry: gpd.GeoDataFrame | None = None
         self.transform: Affine | None = None
         self.data_points: dict[str, int] = {}
+        self.daily_timeseries: gpd.GeoDataFrame | None = None
         
         self._to_utm()
     
@@ -257,7 +258,7 @@ class Footprint:
         
         return self
     
-    def rasterize(self, resolution: int = 1) -> Self:
+    def rasterize(self, resolution: int = 1, threshold: float = 0.0) -> Self:
         """
         Rasterize the footprint polygons to a numpy array.
 
@@ -298,10 +299,14 @@ class Footprint:
         
         i = 0
         skipped = 0
+        daily_polygon = []
+        daily_timestamps = []
         def calc_daily_overlaps(group):
             nonlocal i
             nonlocal skipped
             nonlocal raster
+            nonlocal daily_polygon
+            nonlocal daily_timestamps
             
             assert self.transform
             group_date = group["date"].iloc[0]
@@ -334,11 +339,24 @@ class Footprint:
                 raster = raster.astype(np.float32)
                 daily_raster = daily_raster * (eto / self.reference_eto["gridMET_ETo"].sum())
             
+            # Timeseries construction #
+            # First, normalize a copy of the daily raster so the effect of overlap_threshold can be applied.
+            daily_raster_copy = daily_raster.copy()
+            daily_raster_copy = np.divide(daily_raster_copy, daily_raster_copy.max(), dtype=np.float32)
+            # Create shapes from raster data.
+            shapes_gen = shapes(daily_raster_copy, mask = daily_raster_copy > threshold, transform = self.transform)
+            # Create polygons from shapes.
+            polygons = unary_union([shape(geom) for geom, _ in shapes_gen])
+            # Append to the daily polygon list.
+            daily_polygon.append(polygons)
+            daily_timestamps.append(group_date)
+            
             raster[:, :, i] = daily_raster
             i+=1
         
         tqdm.pandas(desc="Rasterizing Daily Polygons", position=0, leave=True)
         poly_data.groupby("date").progress_apply(calc_daily_overlaps) # type: ignore
+        self.daily_timeseries = gpd.GeoDataFrame({"time": daily_timestamps, "geometry": daily_polygon}, crs = self.utm_crs)
         
         # Sum the raster along the third axis to get the total overlap count.
         raster = raster.sum(axis=2, dtype=raster.dtype)
@@ -347,7 +365,7 @@ class Footprint:
         
         return self
     
-    def polygonize(self, threshold: float = 1.0, smoothing_factor: int = 50) -> gpd.GeoDataFrame:
+    def polygonize(self, threshold: float = 0.0, smoothing_factor: int = 50) -> gpd.GeoDataFrame:
         """
         Create a single polygon from rasters that meet overlap threshold.
 
