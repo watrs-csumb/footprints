@@ -6,7 +6,7 @@ location                = [36.4568849031, -121.382712914]
 
 # Weight by reference ETo, must be true or false.
 # Multiplies overlap counts by fraction of cummulative ETo for each day.
-weigh_by_eto           = true
+weigh_by_eto           = false
 # Reference ET data input. Ignored if `weigh_by_eto` is `false`.
 eto_file                = "./data/MB_LET_S1_fluxdataqaqc_20250404.csv"
 
@@ -22,7 +22,7 @@ max_rows                = -1
 
 [output]
 # Path to output directory.
-output_dir              = "./data/zab/"
+output_dir              = "./"
 # Meters per pixel for the output image.
 spatial_resolution      = 1
 # Overlap threshold for polygonization.
