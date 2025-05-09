@@ -13,7 +13,7 @@ eto_file                = "./data/MB_LET_S1_fluxdataqaqc_20250404.csv"
 # Estimated height of the boundary layer in meters.
 boundary_layer_height   = 2000
 # Percentage of source area for which to provide contours, must be between 10% and 90%. 
-# Can be either a single value (e.g., "80") or a list of values (e.g., "[10, 20, 30]")
+# Must be a single value in a list. Multiple values may be provided, but only the first will be used.
 # Expressed either in percentages ("80") or as fractions of 1 ("0.8"). 
 source_contour_ratio    = [90]
 
