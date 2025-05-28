@@ -48,7 +48,10 @@ This is the configuration file and should be the only file you modify. The confi
 
 ### Input
 #### `file`
-Path to the input file. 
+Path to the input file. \
+Input data must contain the following columns (case-sensitive): \
+["date_time", "WS", "USTAR", "WD", "V_SIGMA", "MO_LENGTH", "instr_height_m", "canopy_height_m", "Z0_roughness"]
+
 ```toml
 # Example (relative)
 file = "./mydata.csv"
@@ -88,8 +91,20 @@ Directory/Folder to place the output files in.
 #### `spatial_resolution`
 The spatial resolution to use for the polygon in meters per pixel.
 
+![image](https://github.com/user-attachments/assets/d79db78c-7462-499f-9f1f-e4bdf2224560)
+
+
 #### `overlap_threshold`
-Percentage adjustment for number of overlaps needed for data to contribute to footprint. Must be between 0 and 1.
+Minimum percentile of max overlaps to be included in footprint . e.g. `0.2` results in overlaps above the 20th percentile to be included.
+
+![image](https://github.com/user-attachments/assets/87c7944e-a60e-463e-9048-31bfdc600b93)
+
+
+#### `smoothing_factor`
+The number of pixel steps to smooth. Higher number results in a smoother shape. *See https://pypi.org/project/shapelysmooth/#taubin*
+
+![image](https://github.com/user-attachments/assets/e6b3666a-2758-4f0c-b9bf-f96d075698fa)
+
 
 ## app.py
 This is the script application that generates the footprint and exports:

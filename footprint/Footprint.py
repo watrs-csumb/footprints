@@ -1,4 +1,3 @@
-from datetime import date
 from typing import Self
 from .core import FPP
 
@@ -10,9 +9,11 @@ from pyproj import Transformer
 from rasterio import features
 from rasterio.features import shapes
 from rasterio.transform import from_origin, Affine
+from shapely import MultiPolygon
 from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from shapelysmooth import taubin_smooth
+from tqdm import tqdm
 
 BOUNDARY_LAYER_HEIGHT = 2000
 CONTOUR_SRC_PCT = [90]
@@ -51,6 +52,8 @@ class Footprint:
         self.reference_eto: pd.DataFrame | None = None
         self.geometry: gpd.GeoDataFrame | None = None
         self.transform: Affine | None = None
+        self.data_points: dict[str, int] = {}
+        self.daily_timeseries: gpd.GeoDataFrame | None = None
         
         self._to_utm()
     
@@ -124,9 +127,9 @@ class Footprint:
         
         self.data = data[Footprint._req_columns].copy()
         
-        # Filter WS (wind speed) so outliers are removed.
-        wind_lim = self.data["WS"].quantile(self._ws_limit_quantile)
-        self.data["WS"] = self.data["WS"].clip(upper=wind_lim)
+        # # Filter WS (wind speed) so outliers are removed.
+        # wind_lim = self.data["WS"].quantile(self._ws_limit_quantile)
+        # self.data["WS"] = self.data["WS"].clip(upper=wind_lim)
 
         # Convert to datetime.
         self.data["date_time"] = pd.to_datetime(self.data["date_time"])
@@ -199,7 +202,12 @@ class Footprint:
         times = []
         polygons = []
         
-        for index, row in self.data.iterrows():
+        # Create a series that is the aggregate of total number of rows for each day.
+        self.rows_per_day = self.data.groupby(["yyyy", "mm", "day"]).size().reset_index(name="count")
+        
+        progress_bar_size = self.data.shape[0] if max_rows < 0 else max_rows
+        progress_bar_obj = tqdm(self.data.iterrows(), desc="Half-hourly Footprints", total=progress_bar_size, position=0, leave=True)
+        for index, row in progress_bar_obj:
             if max_rows > 0 and index >= max_rows: # type: ignore
                 break
             
@@ -227,11 +235,19 @@ class Footprint:
                 polygon = Polygon(zip(xr, yr))
                 polygons.append(polygon)
                 times.append(row["date_time"])
+                
+                if not self.data_points.get(str(row["date_time"].date())):
+                    self.data_points[str(row["date_time"].date())] = 1
+                else:
+                    self.data_points[str(row["date_time"].date())] += 1
+            except (ValueError, TypeError):
+                continue
             except Exception as e:
-                print(f"Error in row {index}: {e}")
+                progress_bar_obj.write(str(e))
+                continue
         
         # Create GeoDataFrame from all collected polygons at once.
-        self.geometry = gpd.GeoDataFrame(geometry = polygons, index=times, crs = self.utm_crs) # type: ignore
+        self.geometry = gpd.GeoDataFrame({"times": times, "geometry": polygons}, crs = self.utm_crs) # type: ignore
         
         # Validate an output.
         if not self.geometry.empty:
@@ -242,7 +258,7 @@ class Footprint:
         
         return self
     
-    def rasterize(self, resolution: int = 1) -> Self:
+    def rasterize(self, resolution: int = 1, threshold: float = 0.0) -> Self:
         """
         Rasterize the footprint polygons to a numpy array.
 
@@ -277,14 +293,25 @@ class Footprint:
         width = int((maxx - minx) / resolution)
         height = int((maxy - miny) / resolution)
         
-        poly_data["date"] = pd.to_datetime(poly_data["index"]).dt.date
+        poly_data["date"] = pd.to_datetime(poly_data["times"]).dt.date
         self.transform = from_origin(minx, maxy, resolution, resolution)
         raster = np.zeros((height, width, poly_data["date"].nunique()), dtype=np.uint8)
         
         i = 0
+        skipped = 0
+        daily_polygon = []
+        daily_timestamps = []
         def calc_daily_overlaps(group):
             nonlocal i
+            nonlocal skipped
+            nonlocal raster
+            nonlocal daily_polygon
+            nonlocal daily_timestamps
+            
             assert self.transform
+            group_date = group["date"].iloc[0]
+            valid_rows_count = self.data_points[str(group_date)]
+            
             daily_raster = np.zeros((height, width), dtype=np.uint8)
             for index, row in group.iterrows():
                 try: 
@@ -295,30 +322,50 @@ class Footprint:
                         all_touched=True,
                         fill = 0)
                     
-                    # If reference eto is provided, weigh the overlap counts by the fraction of eto data from total eto data.
-                    if self.reference_eto is not None:
-                        date_mask = self.reference_eto["date"].dt.date == row["date"]
-                        eto = self.reference_eto[date_mask]["gridMET_ETo"].values[0]
-                        daily_raster = np.ceil(daily_raster * (eto / self.reference_eto["gridMET_ETo"].sum())).astype(daily_raster.dtype)
-                    
                     daily_raster += row_raster.astype(daily_raster.dtype)
-                except KeyError as e:
-                    print(f"KeyError in row {index}: {e}")
-                except ValueError as e:
-                    print(f"ValueError in row {index}: {e}")
                 except Exception as e:
                     print(f"Error in row {index}: {e}")
+            
+            # Weigh the overlap counts by the total number of valid rows for the day.
+            # First, get the date of the current row from the datapoints dictionary.
+            # Then, divide the overlap count by the valid row count.
+            daily_raster = np.divide(daily_raster, valid_rows_count, dtype=np.float16)
+            # If reference eto is provided, weigh the overlap counts by the fraction of eto data from total eto data.
+            if self.reference_eto is not None:
+                date_mask = self.reference_eto["date"].dt.date == group_date
+                eto = self.reference_eto[date_mask]["gridMET_ETo"].values[0]
+                
+                daily_raster = daily_raster.astype(np.float32)
+                raster = raster.astype(np.float32)
+                daily_raster = daily_raster * (eto / self.reference_eto["gridMET_ETo"].sum())
+            
+            # Timeseries construction #
+            # First, normalize a copy of the daily raster so the effect of overlap_threshold can be applied.
+            daily_raster_copy = daily_raster.copy()
+            daily_raster_copy = np.divide(daily_raster_copy, daily_raster_copy.max(), dtype=np.float32)
+            # Create shapes from raster data.
+            shapes_gen = shapes(daily_raster_copy, mask = daily_raster_copy > threshold, transform = self.transform)
+            # Create polygons from shapes.
+            polygons = unary_union([shape(geom) for geom, _ in shapes_gen])
+            # Append to the daily polygon list.
+            daily_polygon.append(polygons)
+            daily_timestamps.append(group_date)
             
             raster[:, :, i] = daily_raster
             i+=1
         
-        poly_data.groupby("date").apply(calc_daily_overlaps)
+        tqdm.pandas(desc="Rasterizing Daily Polygons", position=0, leave=True)
+        poly_data.groupby("date").progress_apply(calc_daily_overlaps) # type: ignore
+        self.daily_timeseries = gpd.GeoDataFrame({"time": daily_timestamps, "geometry": daily_polygon}, crs = self.utm_crs)
         
-        self.raster = raster.sum(axis=2, dtype=np.uint16)
+        # Sum the raster along the third axis to get the total overlap count.
+        raster = raster.sum(axis=2, dtype=raster.dtype)
+        # Then normalize based on max weighed overlaps.
+        self.raster = np.divide(raster, raster.max(), dtype=np.float32)
         
         return self
     
-    def polygonize(self, threshold: float = 1.0) -> gpd.GeoDataFrame:
+    def polygonize(self, threshold: float = 0.0, smoothing_factor: int = 50) -> gpd.GeoDataFrame:
         """
         Create a single polygon from rasters that meet overlap threshold.
 
@@ -350,18 +397,27 @@ class Footprint:
             raise ValueError("raster must be set before polygonizing.")
         assert self.transform
         
-        max_overlaps = np.max(self.raster)
-        mask = self.raster > (max_overlaps * threshold)
+        mask = self.raster > threshold
         
         shapes_gen = shapes(self.raster, mask = mask, transform = self.transform)
         polygons = [shape(geom) for geom, _ in shapes_gen]
         
         combined_polygon = unary_union(polygons)
         
-        gdf = gpd.GeoDataFrame(geometry = [combined_polygon], crs = self.utm_crs) # type: ignore
+        if isinstance(combined_polygon, MultiPolygon):
+            footprint_segments = []
+            for geo in combined_polygon.geoms:
+                footprint_segments.append(unary_union(geo))
+            combined_polygon = footprint_segments
+        
+        gdf = gpd.GeoDataFrame(
+            geometry = combined_polygon if isinstance(combined_polygon, list) else [combined_polygon], 
+            crs = self.utm_crs
+        )
         
         try:
-            gdf.loc[0, "geometry"] = taubin_smooth(gdf.loc[0, "geometry"], steps = 50) # type: ignore
+            # Smoothen each polygon within the footprint.
+            gdf["geometry"] = gdf["geometry"].apply(lambda x: taubin_smooth(x, steps = smoothing_factor))
         except Exception as e:
             print(f"Error in smoothing polygon: {e}")
         

@@ -1,10 +1,18 @@
-from footprint import Footprint
-
 import sys
 import pathlib
+import warnings
+
+warnings.simplefilter(action="ignore", category=UserWarning)
+
+try:
+    from footprint import Footprint
+except ImportError:
+    print("Footprint module could not be loaded. Are you in the correct directory?")
+    sys.exit(1)
 
 try:
     import matplotlib.pyplot as plt
+    import matplotlib.ticker as mtick
     import numpy as np
     import pandas as pd
     import rasterio
@@ -32,6 +40,7 @@ def main():
     outputdir = cfg["output"]["output_dir"]
     resolution = cfg["output"]["spatial_resolution"]
     overlap_threshold = cfg["output"]["overlap_threshold"]
+    smoothing_factor = cfg["output"]["smoothing_factor"]
     
     # Validate input data exists.
     if not file.exists():
@@ -51,15 +60,16 @@ def main():
     if using_reference_eto:
         if not pathlib.Path(reference_eto_file).exists():
             raise FileNotFoundError(f"File '{reference_eto_file}' could not be found.")
-    
     if type(resolution) is not int or resolution <= 0:
         raise ValueError("Spatial resolution must be a positive integer")
     if (type(blh) not in [float, int] and type(blh) is not int) or blh < 0.:
         raise ValueError("Boundary layer height must be a positive number")
     if type(contour) not in [float, int, list] or np.min(contour) < 0.:
         raise ValueError("Source contour ratio must be positive number(s)")
-    if type(overlap_threshold) not in [float, int] or overlap_threshold < 0 or overlap_threshold > 1:
+    if type(overlap_threshold) is not float or overlap_threshold < 0 or overlap_threshold > 1:
         raise ValueError("Overlap threshold must be a number between 0 and 1")
+    if type(smoothing_factor) is not int or smoothing_factor < 1.:
+        raise ValueError("Smoothing factor must be a number greater than or equal to 1")
     
     df = pd.read_csv(afdat)
     rdf = pd.read_csv(reference_eto_file) if using_reference_eto else None
@@ -76,15 +86,14 @@ def main():
     # Attach data to object then draw footprint and create a raster.
     footprint_raster = footprint.attach(df, rdf).draw(max_rows).rasterize(resolution)
     # Create a polygon from the raster.
-    polygon = footprint_raster.polygonize(overlap_threshold)
+    polygon = footprint_raster.polygonize(overlap_threshold, smoothing_factor)
     
     pathlib.Path(f"{outputdir + file.stem}").mkdir(exist_ok=True)
     polygon.to_file(f"{outputdir + file.stem}/{file.stem}_footprint.shp")
     polygon.to_file(f"{outputdir}{file.stem}_footprint.geojson", driver="GeoJSON")
     
-    # Export the timeseries data.
-    assert footprint.geometry is not None
-    footprint.geometry.to_file(f"{outputdir + file.stem}/{file.stem}_footprint_timeseries.geojson")
+    if footprint_raster.daily_timeseries is not None:
+        footprint_raster.daily_timeseries.to_file(f"{outputdir}{file.stem}_footprint_timeseries.geojson", driver="GeoJSON")
     
     fig, ax = plt.subplots(figsize = (6, 6))
     assert footprint_raster.raster is not None
@@ -95,7 +104,7 @@ def main():
     ax.set_xlabel("Easting (m)")
     ax.set_ylabel("Northing (m)")
     ax.set_title(f"Accumulated Raster\n({tower_location[0]}, {tower_location[1]})")
-    fig.colorbar(im, ax=ax, label="Overlap Count")
+    fig.colorbar(im, ax=ax, label="Overlap Contribution", format=mtick.PercentFormatter(1.0))
     plt.savefig(f"{outputdir}{file.stem}_footprint_heat.png")
     
     fig, ax = plt.subplots(figsize = (6, 6))
@@ -118,7 +127,7 @@ def main():
         height=footprint_raster.raster.shape[0]) as dst:
         
         dst.write(footprint_raster.raster, 1)
-        dst.set_band_description(1, "Footprint Overlaps")
+        dst.set_band_description(1, "Accumulated Overlap Contribution")
         
         # Get the polygon from the footprint's geodataframe.
         shape = [feature["geometry"] for index, feature in polygon.iterrows()]
