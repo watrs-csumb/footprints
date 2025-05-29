@@ -88,20 +88,20 @@ Specify the amount of rows that will be read from input data. Use `-1` to read a
 #### `output_dir`
 Directory/Folder to place the output files in.
 
-#### `spatial_resolution`
-The spatial resolution to use for the polygon in meters per pixel.
+#### `spatial_resolution` [m]
+The spatial resolution (meters) to use for the polygon in meters per pixel.
 
 ![image](https://github.com/user-attachments/assets/d79db78c-7462-499f-9f1f-e4bdf2224560)
 
 
-#### `overlap_threshold`
-Minimum percentile of max overlaps to be included in footprint . e.g. `0.2` results in overlaps above the 20th percentile to be included.
+#### `overlap_threshold`[valid values 0 - 1.0]
+Minimum percentile of footprint overlaps to be included in a time-integrated footprint. A value of `0.2' means cells included in generation of the output GeoJSON footprint were included in 20% of all daily footprints.
 
 ![image](https://github.com/user-attachments/assets/87c7944e-a60e-463e-9048-31bfdc600b93)
 
 
 #### `smoothing_factor`
-The number of pixel steps to smooth. Higher number results in a smoother shape. *See https://pypi.org/project/shapelysmooth/#taubin*
+The number of pixel steps to smooth the output geometry. Higher number results in a smoother shape. *See https://pypi.org/project/shapelysmooth/#taubin*
 
 ![image](https://github.com/user-attachments/assets/e6b3666a-2758-4f0c-b9bf-f96d075698fa)
 
@@ -109,9 +109,9 @@ The number of pixel steps to smooth. Higher number results in a smoother shape. 
 ## app.py
 This is the script application that generates the footprint and exports:
 * A folder containing a shapefile
-* A GeoJSON file
-* An overlap heatmap centered around the tower
-* A polygon figure of the footprint with the source_contour_ratio factored in.
+* A GeoJSON file with the geometry of the time-integrated footprint polygon.
+* A heatmap image centered around the tower. Values representing the % of footprints covering a pixel.
+* A figure of the footprint polygon centered around the tower.
   
 ### Run app.py
 ```bash
