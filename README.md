@@ -121,7 +121,7 @@ python app.py
 
 # Acknowledgements
 ## Footprint Prediction Calculation
-The source code is heavily inspired by the work of Natascha Kljun of Swansea University in Swansea, UK.
+The source was developed from work of Natascha Kljun of Swansea University in Swansea, UK.
 
 ### The original License text as is:
 > Copyright (c) 2015 - 2024 Natascha Kljun
