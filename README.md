@@ -121,7 +121,7 @@ python app.py
 
 # Acknowledgements
 ## Footprint Prediction Calculation
-The source was developed from work of Natascha Kljun of Swansea University in Swansea, UK.
+The footprint scripts were developed from work of Natascha Kljun of Swansea University in Swansea, UK. Please see [Kljun Flux Footprint Prediction](https://footprint.kljun.net/) model for more information on the methods. 
 
 ### The original License text as is:
 > Copyright (c) 2015 - 2024 Natascha Kljun
