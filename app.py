@@ -17,7 +17,7 @@ try:
     import pandas as pd
     import rasterio
     import rasterio.features
-    import rasterio.mask
+    import seaborn as sns
     import tomllib
 except ImportError:
     print("Required dependencies not found. Please install them using 'pip install -r requirements.txt'")
@@ -41,6 +41,10 @@ def main():
     resolution = cfg["output"]["spatial_resolution"]
     overlap_threshold = cfg["output"]["overlap_threshold"]
     smoothing_factor = cfg["output"]["smoothing_factor"]
+    
+    produce_heatmap = cfg["graphs"]["heatmap"]
+    produce_count_heatmap = cfg["graphs"]["heatmap_with_counts"]
+    produce_polygon_chart = cfg["graphs"]["polygon"]
     
     # Validate input data exists.
     if not file.exists():
@@ -70,6 +74,12 @@ def main():
         raise ValueError("Overlap threshold must be a number between 0 and 1")
     if type(smoothing_factor) is not int or smoothing_factor < 1.:
         raise ValueError("Smoothing factor must be a number greater than or equal to 1")
+    if type(produce_heatmap) is not bool:
+        raise TypeError("heatmap must be a boolean")
+    if type(produce_count_heatmap) is not bool:
+        raise TypeError("heatmap_with_counts must be a boolean")
+    if type(produce_polygon_chart) is not bool:
+        raise TypeError("polygon must be a boolean")
     
     df = pd.read_csv(afdat)
     rdf = pd.read_csv(reference_eto_file) if using_reference_eto else None
@@ -95,26 +105,45 @@ def main():
     if footprint_raster.daily_timeseries is not None:
         footprint_raster.daily_timeseries.to_file(f"{outputdir}{file.stem}_footprint_timeseries.geojson", driver="GeoJSON")
     
-    fig, ax = plt.subplots(figsize = (6, 6))
     assert footprint_raster.raster is not None
     assert footprint_raster.geometry is not None
     
-    minx, miny, maxx, maxy = footprint_raster.geometry.union_all().bounds
-    im = ax.imshow(footprint_raster.raster, cmap="hot", extent=(minx, maxx, miny, maxy))
-    ax.set_xlabel("Easting (m)")
-    ax.set_ylabel("Northing (m)")
-    ax.set_title(f"Accumulated Raster\n({tower_location[0]}, {tower_location[1]})")
-    fig.colorbar(im, ax=ax, label="Overlap Contribution", format=mtick.PercentFormatter(1.0))
-    plt.savefig(f"{outputdir}{file.stem}_footprint_heat.png")
+    if produce_heatmap:
+        fig, ax = plt.subplots(figsize = (6, 6))
+        minx, miny, maxx, maxy = footprint_raster.geometry.union_all().bounds
+        im = ax.imshow(footprint_raster.raster, cmap="hot", extent=(minx, maxx, miny, maxy))
+        ax.set_xlabel("Easting (m)")
+        ax.set_ylabel("Northing (m)")
+        ax.set_title(f"Accumulated Raster\n({tower_location[0]}, {tower_location[1]})")
+        fig.colorbar(im, ax=ax, label="Overlap Contribution", format=mtick.PercentFormatter(1.0))
+        plt.savefig(f"{outputdir}{file.stem}_footprint_heat.png")
     
-    fig, ax = plt.subplots(figsize = (6, 6))
-    polygon.plot(ax = ax, edgecolor = "black", facecolor = "none")
-    ax.set_xlabel("Easting (m)")
-    ax.set_ylabel("Northing (m)")
-    ax.set_title(f"Tower Footprint Polygon\n({tower_location[0]}, {tower_location[1]})")
-    plt.savefig(f"{outputdir}{file.stem}_footprint_polygon.png")
+    if produce_count_heatmap:
+        # Create heatmap of rasters with overlap count.
+        fig, ax = plt.subplots(figsize = (100, 100))
+        print("Creating heatmap with overlap count...")
+        ax = sns.heatmap(pd.DataFrame(footprint_raster.raster), cmap="hot", 
+                         annot=True, annot_kws={"fontsize": 5}, 
+                         square=True, fmt=".2f",
+                         linewidth=0.5, xticklabels=False, yticklabels=False,
+                         cbar_kws={"format": mtick.PercentFormatter(1.0), "label": "Overlap Contribution"})
+        ax.collections[0].colorbar.ax.tick_params(labelsize=80) # type: ignore
+        ax.set_xlabel("Easting (m)", fontsize=120)
+        ax.set_ylabel("Northing (m)", fontsize=120)
+        ax.set_title(f"Accumulated Raster\n({tower_location[0]}, {tower_location[1]})")
+        plt.savefig(f"{outputdir}{file.stem}_footprint_heat_count.png")
+    
+    if produce_polygon_chart:
+        print("Creating footprint polygon graph...")
+        fig, ax = plt.subplots(figsize = (6, 6))
+        polygon.plot(ax = ax, edgecolor = "black", facecolor = "none")
+        ax.set_xlabel("Easting (m)")
+        ax.set_ylabel("Northing (m)")
+        ax.set_title(f"Tower Footprint Polygon\n({tower_location[0]}, {tower_location[1]})")
+        plt.savefig(f"{outputdir}{file.stem}_footprint_polygon.png")
     
     # Export raster.
+    print("Exporting footprint raster to .tif file...")
     with rasterio.open(
         f"{outputdir}{file.stem}_footprint_raster.tif", 
         "w+",
@@ -141,6 +170,6 @@ def main():
         
         dst.write(shape_data, 2)
         dst.set_band_description(2, "Footprint Mask")
-
+    print("Done!")
 if __name__ == "__main__":
     main()

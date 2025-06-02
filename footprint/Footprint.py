@@ -416,8 +416,9 @@ class Footprint:
         )
         
         try:
+            tqdm.pandas(desc="Smoothing Polygon(s)", position=0, leave=True)
             # Smoothen each polygon within the footprint.
-            gdf["geometry"] = gdf["geometry"].apply(lambda x: taubin_smooth(x, steps = smoothing_factor))
+            gdf["geometry"] = gdf["geometry"].progress_apply(lambda x: taubin_smooth(x, steps = smoothing_factor))
         except Exception as e:
             print(f"Error in smoothing polygon: {e}")
         

@@ -26,8 +26,16 @@ output_dir              = "./"
 # Meters per pixel for the output image.
 spatial_resolution      = 1
 # Overlap threshold for polygonization.
-overlap_threshold       = 0.8
+overlap_threshold       = 0.2
 # Number of smoothing steps. 
 # Higher values result in a more rounded contour. 
 # Lower values result in a more jagged contour.
-smoothing_factor = 50
+smoothing_factor = 25
+
+[graphs]
+# Whether to export a heatmap showing accumulated overlaps.
+heatmap = false
+# Whether to export a gridded heatmap showing the weight for each pixel.
+heatmap_with_counts = true
+# Whether to export a chart showing the footprint polygon.
+polygon = false
