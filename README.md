@@ -7,7 +7,7 @@
   
 > [!NOTE]
 > If using conda, ensure you are using a terminal with an activated environment.
-\
+
 > [!CAUTION]
 > For Windows users, the dependency 'shapelysmooth' requires Microsoft Visual C++ 14.0 or greater. You can download the [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/?q=build+tools) to install this.
 
