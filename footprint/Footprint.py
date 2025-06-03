@@ -9,7 +9,7 @@ from pyproj import Transformer
 from rasterio import features
 from rasterio.features import shapes
 from rasterio.transform import from_origin, Affine
-from shapely import MultiPolygon
+from shapely import MultiPolygon, coverage_union_all, coverage_is_valid
 from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from shapelysmooth import taubin_smooth
@@ -47,6 +47,7 @@ class Footprint:
         self.utm_crs: str = ""
         self.easting: float = 0.0
         self.northing: float = 0.0
+        self.raw_raster: np.ndarray = np.ndarray(shape=(0,0), dtype=np.uint32)
         self.raster: np.ndarray | None = None
         self.data: pd.DataFrame | None = None
         self.reference_eto: pd.DataFrame | None = None
@@ -296,6 +297,7 @@ class Footprint:
         poly_data["date"] = pd.to_datetime(poly_data["times"]).dt.date
         self.transform = from_origin(minx, maxy, resolution, resolution)
         raster = np.zeros((height, width, poly_data["date"].nunique()), dtype=np.uint8)
+        self.raw_raster = np.zeros((height, width), dtype=np.uint32)
         
         i = 0
         skipped = 0
@@ -323,6 +325,7 @@ class Footprint:
                         fill = 0)
                     
                     daily_raster += row_raster.astype(daily_raster.dtype)
+                    self.raw_raster += row_raster.astype(self.raw_raster.dtype)
                 except Exception as e:
                     print(f"Error in row {index}: {e}")
             
@@ -365,7 +368,7 @@ class Footprint:
         
         return self
     
-    def polygonize(self, threshold: float = 0.0, smoothing_factor: int = 50) -> gpd.GeoDataFrame:
+    def polygonize(self, threshold: float = 0.0, smoothing_factor: int = 50, coverage: bool = False) -> gpd.GeoDataFrame:
         """
         Create a single polygon from rasters that meet overlap threshold.
 
@@ -409,6 +412,9 @@ class Footprint:
             for geo in combined_polygon.geoms:
                 footprint_segments.append(unary_union(geo))
             combined_polygon = footprint_segments
+        
+        if coverage and coverage_is_valid(polygons):
+            combined_polygon = coverage_union_all(combined_polygon if isinstance(combined_polygon, list) else [combined_polygon])
         
         gdf = gpd.GeoDataFrame(
             geometry = combined_polygon if isinstance(combined_polygon, list) else [combined_polygon], 

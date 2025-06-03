@@ -17,7 +17,6 @@ try:
     import pandas as pd
     import rasterio
     import rasterio.features
-    import seaborn as sns
     import tomllib
 except ImportError:
     print("Required dependencies not found. Please install them using 'pip install -r requirements.txt'")
@@ -41,9 +40,9 @@ def main():
     resolution = cfg["output"]["spatial_resolution"]
     overlap_threshold = cfg["output"]["overlap_threshold"]
     smoothing_factor = cfg["output"]["smoothing_factor"]
+    use_coverage_union = cfg["output"]["coverage_union"]
     
     produce_heatmap = cfg["graphs"]["heatmap"]
-    produce_count_heatmap = cfg["graphs"]["heatmap_with_counts"]
     produce_polygon_chart = cfg["graphs"]["polygon"]
     
     # Validate input data exists.
@@ -76,8 +75,6 @@ def main():
         raise ValueError("Smoothing factor must be a number greater than or equal to 1")
     if type(produce_heatmap) is not bool:
         raise TypeError("heatmap must be a boolean")
-    if type(produce_count_heatmap) is not bool:
-        raise TypeError("heatmap_with_counts must be a boolean")
     if type(produce_polygon_chart) is not bool:
         raise TypeError("polygon must be a boolean")
     
@@ -96,7 +93,7 @@ def main():
     # Attach data to object then draw footprint and create a raster.
     footprint_raster = footprint.attach(df, rdf).draw(max_rows).rasterize(resolution)
     # Create a polygon from the raster.
-    polygon = footprint_raster.polygonize(overlap_threshold, smoothing_factor)
+    polygon = footprint_raster.polygonize(overlap_threshold, smoothing_factor, use_coverage_union)
     
     pathlib.Path(f"{outputdir + file.stem}").mkdir(exist_ok=True)
     polygon.to_file(f"{outputdir + file.stem}/{file.stem}_footprint.shp")
@@ -117,21 +114,7 @@ def main():
         ax.set_title(f"Accumulated Raster\n({tower_location[0]}, {tower_location[1]})")
         fig.colorbar(im, ax=ax, label="Overlap Contribution", format=mtick.PercentFormatter(1.0))
         plt.savefig(f"{outputdir}{file.stem}_footprint_heat.png")
-    
-    if produce_count_heatmap:
-        # Create heatmap of rasters with overlap count.
-        fig, ax = plt.subplots(figsize = (100, 100))
-        print("Creating heatmap with overlap count...")
-        ax = sns.heatmap(pd.DataFrame(footprint_raster.raster), cmap="hot", 
-                         annot=True, annot_kws={"fontsize": 5}, 
-                         square=True, fmt=".2f",
-                         linewidth=0.5, xticklabels=False, yticklabels=False,
-                         cbar_kws={"format": mtick.PercentFormatter(1.0), "label": "Overlap Contribution"})
-        ax.collections[0].colorbar.ax.tick_params(labelsize=80) # type: ignore
-        ax.set_xlabel("Easting (m)", fontsize=120)
-        ax.set_ylabel("Northing (m)", fontsize=120)
-        ax.set_title(f"Accumulated Raster\n({tower_location[0]}, {tower_location[1]})")
-        plt.savefig(f"{outputdir}{file.stem}_footprint_heat_count.png")
+
     
     if produce_polygon_chart:
         print("Creating footprint polygon graph...")
@@ -150,13 +133,13 @@ def main():
         transform=footprint_raster.transform,
         crs=footprint_raster.utm_crs,
         driver="GTiff",
-        count=2,
+        count=3,
         dtype=footprint_raster.raster.dtype,
         width=footprint_raster.raster.shape[1],
         height=footprint_raster.raster.shape[0]) as dst:
         
         dst.write(footprint_raster.raster, 1)
-        dst.set_band_description(1, "Accumulated Overlap Contribution")
+        dst.set_band_description(1, "Weighted Overlaps")
         
         # Get the polygon from the footprint's geodataframe.
         shape = [feature["geometry"] for index, feature in polygon.iterrows()]
@@ -170,6 +153,10 @@ def main():
         
         dst.write(shape_data, 2)
         dst.set_band_description(2, "Footprint Mask")
+        
+        dst.write(footprint_raster.raw_raster, 3)
+        dst.set_band_description(3, "Raw Raster")
+
     print("Done!")
 if __name__ == "__main__":
     main()

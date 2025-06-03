@@ -30,12 +30,12 @@ overlap_threshold       = 0.2
 # Number of smoothing steps. 
 # Higher values result in a more rounded contour. 
 # Lower values result in a more jagged contour.
-smoothing_factor = 25
+smoothing_factor = 50
+# If the output results in disjointed polygons, use best-effort approach to combine them into one.
+coverage_union = false
 
 [graphs]
 # Whether to export a heatmap showing accumulated overlaps.
 heatmap = false
-# Whether to export a gridded heatmap showing the weight for each pixel.
-heatmap_with_counts = true
 # Whether to export a chart showing the footprint polygon.
-polygon = false
+polygon = true

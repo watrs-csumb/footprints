@@ -132,13 +132,13 @@ The number of pixel steps to smooth the output geometry. Higher number results i
 
 ![image](https://github.com/user-attachments/assets/e6b3666a-2758-4f0c-b9bf-f96d075698fa)
 
+#### `coverage_union`
+
+If the resulting footprint results in disjointed polygons, uses best-effort approach to combine disjointed polygons.
+
 ### `heatmap`
 
 Whether to export a heatmap image showing the cummulative contribution.
-
-### `heatmap_with_count`
-
-Whether to export a gridded heatmap image displaying the weight of each pixel.
 
 ### `polygon`
 
@@ -159,6 +159,19 @@ This is the script application that generates the footprint and exports:
 # To run the script, simply run:
 python app.py
 ```
+
+### Outputs
+
+* Shapefile containing footprint polygon
+* Raster GeoTiFF containing 3 bands:
+  * Band 1: Normalized dataset
+  * Band 2: Polygon Mask
+  * Band 3: Raw dataset containing cummulative overlaps
+* Daily timeseries GeoJSON containing two rows:
+  * Time: YYYY-MM-DD
+  * Geometry: Footprint polygon for each timestep
+* GeoJSON of footprint polygon
+* Any specified charts from the [graphs] options
 
 ## Acknowledgements
 
