@@ -167,7 +167,7 @@ python app.py
   * Band 1: Normalized dataset
   * Band 2: Polygon Mask
   * Band 3: Raw dataset containing cummulative overlaps
-* Daily timeseries GeoJSON containing two rows:
+* Daily timeseries GeoJSON containing two columns:
   * Time: YYYY-MM-DD
   * Geometry: Footprint polygon for each timestep
 * GeoJSON of footprint polygon
