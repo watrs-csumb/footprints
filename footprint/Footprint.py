@@ -1,5 +1,5 @@
 from typing import Self
-from .core import FPP
+from .core_nb import FPP
 
 import pandas as pd
 import geopandas as gpd
