@@ -17,9 +17,6 @@ boundary_layer_height   = 2000
 # Expressed either in percentages ("80") or as fractions of 1 ("0.8"). 
 source_contour_ratio    = [90]
 
-# Maximum number of rows to read from the input file (-1 to include all).
-max_rows                = -1
-
 [output]
 # Path to output directory.
 output_dir              = "./results/"
@@ -27,10 +24,6 @@ output_dir              = "./results/"
 spatial_resolution      = 1
 # Overlap threshold for polygonization.
 overlap_threshold       = 0.2
-# Number of smoothing steps. 
-# Higher values result in a more rounded contour. 
-# Lower values result in a more jagged contour.
-smoothing_factor = 50
 # If the output results in disjointed polygons, use best-effort approach to combine them into one.
 coverage_union = false
 

@@ -39,12 +39,9 @@ def main():
     blh = cfg["input"]["boundary_layer_height"]
     contour = cfg["input"]["source_contour_ratio"]
     
-    max_rows = cfg["input"]["max_rows"]
-    
     outputdir = cfg["output"]["output_dir"]
     resolution = cfg["output"]["spatial_resolution"]
     overlap_threshold = cfg["output"]["overlap_threshold"]
-    smoothing_factor = cfg["output"]["smoothing_factor"]
     use_coverage_union = cfg["output"]["coverage_union"]
     
     produce_heatmap = cfg["graphs"]["heatmap"]
@@ -76,8 +73,6 @@ def main():
         raise ValueError("Source contour ratio must be positive number(s)")
     if type(overlap_threshold) is not float or overlap_threshold < 0 or overlap_threshold > 1:
         raise ValueError("Overlap threshold must be a number between 0 and 1")
-    if type(smoothing_factor) is not int or smoothing_factor < 1.:
-        raise ValueError("Smoothing factor must be a number greater than or equal to 1")
     if type(produce_heatmap) is not bool:
         raise TypeError("heatmap must be a boolean")
     if type(produce_polygon_chart) is not bool:
@@ -96,9 +91,9 @@ def main():
         footprint.contour_src_pct = contour
     
     # Attach data to object then draw footprint and create a raster.
-    footprint_raster = footprint.attach(df, rdf).draw(max_rows).rasterize(resolution)
+    footprint_raster = footprint.attach(df, rdf).draw(-1).rasterize(resolution)
     # Create a polygon from the raster.
-    polygon = footprint_raster.polygonize(overlap_threshold, smoothing_factor, use_coverage_union)
+    polygon = footprint_raster.polygonize(overlap_threshold, 30, use_coverage_union)
     
     pathlib.Path(f"{outputdir + file.stem}").mkdir(exist_ok=True)
     polygon.to_file(f"{outputdir + file.stem}/{file.stem}_footprint.shp")
