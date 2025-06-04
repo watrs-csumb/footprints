@@ -1,5 +1,6 @@
 [input]
 # (Optional) Name of this job. Output names are superseded by this variable.
+# Leave empty (e.g. "") if you'd like to keep the tower data file name as the outputs' name prefix.
 name                    = "LettuceS2"
 
 # Path to input file.

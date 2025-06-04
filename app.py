@@ -24,7 +24,27 @@ except ImportError:
 
 def main():
     cfg = tomllib.load(open("app.toml", "rb"))
-    afdat = f"{cfg['input']['file']}"
+    try:
+        afdat = f"{cfg['input']['file']}"
+        using_reference_eto = cfg["input"]["weigh_by_eto"]
+        reference_eto_file = cfg["input"]["eto_file"]
+        
+        tower_location = cfg["input"]["location"]
+        blh = cfg["input"]["boundary_layer_height"]
+        contour = cfg["input"]["source_contour_ratio"]
+        
+        run_name = str(cfg["input"]["name"])
+        
+        outputdir = cfg["output"]["output_dir"]
+        resolution = cfg["output"]["spatial_resolution"]
+        overlap_threshold = cfg["output"]["overlap_threshold"]
+        use_coverage_union = cfg["output"]["coverage_union"]
+        
+        produce_heatmap = cfg["graphs"]["heatmap"]
+        produce_polygon_chart = cfg["graphs"]["polygon"]
+    except KeyError as err:
+        print(f"The variable {str(err)} is missing from app.toml!")
+        sys.exit()
     
     # Windows Only - NT systems use \ in paths so a copied path may contain this char.
     if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
@@ -33,22 +53,6 @@ def main():
     file = pathlib.Path(afdat)
     output_prefix = file.stem
     
-    using_reference_eto = cfg["input"]["weigh_by_eto"]
-    reference_eto_file = cfg["input"]["eto_file"]
-    
-    tower_location = cfg["input"]["location"]
-    blh = cfg["input"]["boundary_layer_height"]
-    contour = cfg["input"]["source_contour_ratio"]
-    
-    run_name = str(cfg["input"]["name"])
-    
-    outputdir = cfg["output"]["output_dir"]
-    resolution = cfg["output"]["spatial_resolution"]
-    overlap_threshold = cfg["output"]["overlap_threshold"]
-    use_coverage_union = cfg["output"]["coverage_union"]
-    
-    produce_heatmap = cfg["graphs"]["heatmap"]
-    produce_polygon_chart = cfg["graphs"]["polygon"]
     
     # Validate input data exists.
     if not file.exists():
