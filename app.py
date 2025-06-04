@@ -1,5 +1,5 @@
-import sys
 import pathlib
+import sys
 import warnings
 
 warnings.simplefilter(action="ignore", category=UserWarning)
@@ -24,7 +24,12 @@ except ImportError:
 
 def main():
     cfg = tomllib.load(open("app.toml", "rb"))
-    afdat = f"{cfg['input']['file'].replace("\\",'/')}"
+    afdat = f"{cfg['input']['file']}"
+    
+    # Windows Only - NT systems use \ in paths so a copied path may contain this char.
+    if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
+        afdat = afdat.replace("\\",'/')
+    
     file = pathlib.Path(afdat)
     
     using_reference_eto = cfg["input"]["weigh_by_eto"]
