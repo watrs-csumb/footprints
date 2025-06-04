@@ -1,4 +1,7 @@
 [input]
+# (Optional) Name of this job. Output names are superseded by this variable.
+name                    = "LettuceS2"
+
 # Path to input file.
 file                    = "./data/MB_LET_S2_pi_qc_20250317.csv"
 # Latitude and longitude of tower location.
