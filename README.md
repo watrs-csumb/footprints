@@ -1,5 +1,9 @@
 # Flux Footprints by CSUMB WATRS
 
+Eddy covariance (EC) flux towers provide invaluable measurements of water, energy, and carbon fluxes. However, using EC measurments to develop or evaluate models of water, energy, and carbon requires linking measurements at the sesnor to the source area on land. The Kljun footprint model applies a 2-dimensional parameterization of the Flux Footprint Prediction (FFP) model (Kljun et al., 2015) to delineate the source area. Here, we build on the FFP model by optimizing functions to improve processing speed and customizing the footprint outputs (weighted GeoTIFF & GeoJSON) to more easily compare satellite-based evapotranspiration models with on-ground measurements.   
+
+
+
 ## Prerequisites
 
 * Python 3.10+
