@@ -62,6 +62,11 @@ This is the configuration file and should be the only file you modify. The confi
 
 ### Input
 
+#### `run_name`
+
+An optional parameter for naming the run. This has the effect of using run_name for file outputs instead of extracting the filename from inputs.\
+If left empty, continues using filename for outputs.
+
 #### `file`
 
 Path to the input file. \
