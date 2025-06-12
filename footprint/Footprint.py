@@ -9,7 +9,7 @@ from pyproj import Transformer
 from rasterio import features
 from rasterio.features import shapes
 from rasterio.transform import from_origin, Affine
-from shapely import MultiPolygon, coverage_union_all, coverage_is_valid
+from shapely import GeometryCollection, MultiPolygon, convex_hull
 from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from shapelysmooth import taubin_smooth
@@ -413,11 +413,17 @@ class Footprint:
                 footprint_segments.append(unary_union(geo))
             combined_polygon = footprint_segments
         
-        if coverage and coverage_is_valid(polygons):
-            combined_polygon = coverage_union_all(combined_polygon if isinstance(combined_polygon, list) else [combined_polygon])
+        combined_polygon = combined_polygon if isinstance(combined_polygon, list) else [combined_polygon]
+        
+        if coverage:
+            print("Performing convex hull union...")
+            # First, create a multipolygon containing all the polygons.
+            mp = MultiPolygon(GeometryCollection(combined_polygon))
+            # Then perform convex hull on it.
+            combined_polygon = [convex_hull(mp)]
         
         gdf = gpd.GeoDataFrame(
-            geometry = combined_polygon if isinstance(combined_polygon, list) else [combined_polygon], 
+            geometry = combined_polygon, 
             crs = self.utm_crs
         )
         
