@@ -137,12 +137,12 @@ The number of pixel steps to smooth the output geometry. Higher number results i
 
 ![image](https://github.com/user-attachments/assets/e6b3666a-2758-4f0c-b9bf-f96d075698fa)
 
-#### `coverage_union`
+#### `merge_disjointed`
 
 If the resulting footprint results in disjointed polygons, uses best-effort approach to combine disjointed polygons. \
 A convex hull is performed on the polygons to create the smallest possible polygon that contains all the vertices in the geometries.
 
-![image](https://github.com/user-attachments/assets/9c021c80-1f08-4baa-a719-ecc256fd5865)
+![image](https://github.com/user-attachments/assets/1c7f04ee-8b2c-46b6-8d77-3ec60660f58e)
 
 ### `heatmap`
 
