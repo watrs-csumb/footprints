@@ -415,7 +415,7 @@ class Footprint:
         
         combined_polygon = combined_polygon if isinstance(combined_polygon, list) else [combined_polygon]
         
-        if merge_disjointed:
+        if merge_disjointed and len(combined_polygon) > 1:
             print("Performing convex hull union...")
             # First, create a multipolygon containing all the polygons.
             mp = MultiPolygon(GeometryCollection(combined_polygon))
