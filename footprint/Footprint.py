@@ -368,7 +368,7 @@ class Footprint:
         
         return self
     
-    def polygonize(self, threshold: float = 0.0, smoothing_factor: int = 50, coverage: bool = False) -> gpd.GeoDataFrame:
+    def polygonize(self, threshold: float = 0.0, smoothing_factor: int = 50, merge_disjointed: bool = False) -> gpd.GeoDataFrame:
         """
         Create a single polygon from rasters that meet overlap threshold.
 
@@ -415,7 +415,7 @@ class Footprint:
         
         combined_polygon = combined_polygon if isinstance(combined_polygon, list) else [combined_polygon]
         
-        if coverage:
+        if merge_disjointed:
             print("Performing convex hull union...")
             # First, create a multipolygon containing all the polygons.
             mp = MultiPolygon(GeometryCollection(combined_polygon))

@@ -29,7 +29,7 @@ spatial_resolution      = 1
 # Overlap threshold for polygonization.
 overlap_threshold       = 0.2
 # If the output results in disjointed polygons, use best-effort approach to combine them into one.
-coverage_union = false
+merge_disjointed = false
 
 [graphs]
 # Whether to export a heatmap showing accumulated overlaps.

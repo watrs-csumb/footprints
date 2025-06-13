@@ -38,7 +38,7 @@ def main():
         outputdir = cfg["output"]["output_dir"]
         resolution = cfg["output"]["spatial_resolution"]
         overlap_threshold = cfg["output"]["overlap_threshold"]
-        use_coverage_union = cfg["output"]["coverage_union"]
+        do_merge_disjointed = cfg["output"]["merge_disjointed"]
         
         produce_heatmap = cfg["graphs"]["heatmap"]
         produce_polygon_chart = cfg["graphs"]["polygon"]
@@ -109,7 +109,7 @@ def main():
     # Attach data to object then draw footprint and create a raster.
     footprint_raster = footprint.attach(df, rdf).draw(-1).rasterize(resolution)
     # Create a polygon from the raster.
-    polygon = footprint_raster.polygonize(overlap_threshold, 30, use_coverage_union)
+    polygon = footprint_raster.polygonize(overlap_threshold, 30, do_merge_disjointed)
     
     pathlib.Path(outputdir / output_prefix).mkdir(exist_ok=True)
     polygon.to_file(outputdir / output_prefix / f"{output_prefix}_footprint.shp")
