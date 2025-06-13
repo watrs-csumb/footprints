@@ -24,31 +24,35 @@ except ImportError:
 
 def main():
     cfg = tomllib.load(open("app.toml", "rb"))
-    afdat = f"{cfg['input']['file']}"
+    try:
+        afdat = f"{cfg['input']['file']}"
+        using_reference_eto = cfg["input"]["weigh_by_eto"]
+        reference_eto_file = cfg["input"]["eto_file"]
+        
+        tower_location = cfg["input"]["location"]
+        blh = cfg["input"]["boundary_layer_height"]
+        contour = cfg["input"]["source_contour_ratio"]
+        
+        run_name = str(cfg["input"]["name"])
+        
+        outputdir = cfg["output"]["output_dir"]
+        resolution = cfg["output"]["spatial_resolution"]
+        overlap_threshold = cfg["output"]["overlap_threshold"]
+        do_merge_disjointed = cfg["output"]["merge_disjointed"]
+        
+        produce_heatmap = cfg["graphs"]["heatmap"]
+        produce_polygon_chart = cfg["graphs"]["polygon"]
+    except KeyError as err:
+        print(f"The variable {str(err)} is missing from app.toml!")
+        sys.exit()
     
     # Windows Only - NT systems use \ in paths so a copied path may contain this char.
     if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
         afdat = afdat.replace("\\",'/')
-    
+        
     file = pathlib.Path(afdat)
+    output_prefix = file.stem
     
-    using_reference_eto = cfg["input"]["weigh_by_eto"]
-    reference_eto_file = cfg["input"]["eto_file"]
-    
-    tower_location = cfg["input"]["location"]
-    blh = cfg["input"]["boundary_layer_height"]
-    contour = cfg["input"]["source_contour_ratio"]
-    
-    max_rows = cfg["input"]["max_rows"]
-    
-    outputdir = cfg["output"]["output_dir"]
-    resolution = cfg["output"]["spatial_resolution"]
-    overlap_threshold = cfg["output"]["overlap_threshold"]
-    smoothing_factor = cfg["output"]["smoothing_factor"]
-    use_coverage_union = cfg["output"]["coverage_union"]
-    
-    produce_heatmap = cfg["graphs"]["heatmap"]
-    produce_polygon_chart = cfg["graphs"]["polygon"]
     
     # Validate input data exists.
     if not file.exists():
@@ -61,6 +65,15 @@ def main():
     # Append a trailing / if missing to avoid file path issues.
     if not outputdir.endswith("/"):
         outputdir += "/"
+    
+    # Make outputdir into a Path object
+    outputdir = pathlib.Path(outputdir)
+    
+    # Create a folder in the output directory with the run name and formulate the new output directory.
+    if run_name:
+        output_prefix = run_name
+        outputdir = outputdir / run_name
+        outputdir.mkdir(exist_ok=True)
     
     if type(using_reference_eto) is not bool:
         raise TypeError("weigh_by_eto must be a boolean")
@@ -76,8 +89,6 @@ def main():
         raise ValueError("Source contour ratio must be positive number(s)")
     if type(overlap_threshold) is not float or overlap_threshold < 0 or overlap_threshold > 1:
         raise ValueError("Overlap threshold must be a number between 0 and 1")
-    if type(smoothing_factor) is not int or smoothing_factor < 1.:
-        raise ValueError("Smoothing factor must be a number greater than or equal to 1")
     if type(produce_heatmap) is not bool:
         raise TypeError("heatmap must be a boolean")
     if type(produce_polygon_chart) is not bool:
@@ -96,16 +107,16 @@ def main():
         footprint.contour_src_pct = contour
     
     # Attach data to object then draw footprint and create a raster.
-    footprint_raster = footprint.attach(df, rdf).draw(max_rows).rasterize(resolution)
+    footprint_raster = footprint.attach(df, rdf).draw(-1).rasterize(resolution)
     # Create a polygon from the raster.
-    polygon = footprint_raster.polygonize(overlap_threshold, smoothing_factor, use_coverage_union)
+    polygon = footprint_raster.polygonize(overlap_threshold, 30, do_merge_disjointed)
     
-    pathlib.Path(f"{outputdir + file.stem}").mkdir(exist_ok=True)
-    polygon.to_file(f"{outputdir + file.stem}/{file.stem}_footprint.shp")
-    polygon.to_file(f"{outputdir}{file.stem}_footprint.geojson", driver="GeoJSON")
+    pathlib.Path(outputdir / output_prefix).mkdir(exist_ok=True)
+    polygon.to_file(outputdir / output_prefix / f"{output_prefix}_footprint.shp")
+    polygon.to_file(outputdir / f"{output_prefix}_footprint.geojson", driver="GeoJSON")
     
     if footprint_raster.daily_timeseries is not None:
-        footprint_raster.daily_timeseries.to_file(f"{outputdir}{file.stem}_footprint_timeseries.geojson", driver="GeoJSON")
+        footprint_raster.daily_timeseries.to_file(outputdir / f"{output_prefix}_footprint_timeseries.geojson", driver="GeoJSON")
     
     assert footprint_raster.raster is not None
     assert footprint_raster.geometry is not None
@@ -118,7 +129,7 @@ def main():
         ax.set_ylabel("Northing (m)")
         ax.set_title(f"Accumulated Raster\n({tower_location[0]}, {tower_location[1]})")
         fig.colorbar(im, ax=ax, label="Overlap Contribution", format=mtick.PercentFormatter(1.0))
-        plt.savefig(f"{outputdir}{file.stem}_footprint_heat.png")
+        plt.savefig(outputdir / f"{output_prefix}_footprint_heat.png")
 
     
     if produce_polygon_chart:
@@ -128,12 +139,12 @@ def main():
         ax.set_xlabel("Easting (m)")
         ax.set_ylabel("Northing (m)")
         ax.set_title(f"Tower Footprint Polygon\n({tower_location[0]}, {tower_location[1]})")
-        plt.savefig(f"{outputdir}{file.stem}_footprint_polygon.png")
+        plt.savefig(outputdir / f"{output_prefix}_footprint_polygon.png")
     
     # Export raster.
     print("Exporting footprint raster to .tif file...")
     with rasterio.open(
-        f"{outputdir}{file.stem}_footprint_raster.tif", 
+        outputdir / f"{output_prefix}_footprint_raster.tif", 
         "w+",
         transform=footprint_raster.transform,
         crs=footprint_raster.utm_crs,

@@ -1,4 +1,8 @@
 [input]
+# (Optional) Name of this job. Output names are superseded by this variable.
+# Leave empty (e.g. "") if you'd like to keep the tower data file name as the outputs' name prefix.
+name                    = "LettuceS2"
+
 # Path to input file.
 file                    = "./data/MB_LET_S2_pi_qc_20250317.csv"
 # Latitude and longitude of tower location.
@@ -17,9 +21,6 @@ boundary_layer_height   = 2000
 # Expressed either in percentages ("80") or as fractions of 1 ("0.8"). 
 source_contour_ratio    = [90]
 
-# Maximum number of rows to read from the input file (-1 to include all).
-max_rows                = -1
-
 [output]
 # Path to output directory.
 output_dir              = "./results/"
@@ -27,12 +28,8 @@ output_dir              = "./results/"
 spatial_resolution      = 1
 # Overlap threshold for polygonization.
 overlap_threshold       = 0.2
-# Number of smoothing steps. 
-# Higher values result in a more rounded contour. 
-# Lower values result in a more jagged contour.
-smoothing_factor = 50
 # If the output results in disjointed polygons, use best-effort approach to combine them into one.
-coverage_union = false
+merge_disjointed = false
 
 [graphs]
 # Whether to export a heatmap showing accumulated overlaps.

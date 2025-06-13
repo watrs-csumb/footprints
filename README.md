@@ -66,6 +66,11 @@ This is the configuration file and should be the only file you modify. The confi
 
 ### Input
 
+#### `run_name`
+
+An optional parameter for naming the run. This has the effect of using run_name for file outputs instead of extracting the filename from inputs.\
+If left empty, continues using filename for outputs.
+
 #### `file`
 
 Path to the input file. \
@@ -136,9 +141,12 @@ The number of pixel steps to smooth the output geometry. Higher number results i
 
 ![image](https://github.com/user-attachments/assets/e6b3666a-2758-4f0c-b9bf-f96d075698fa)
 
-#### `coverage_union`
+#### `merge_disjointed`
 
-If the resulting footprint results in disjointed polygons, uses best-effort approach to combine disjointed polygons.
+If the resulting footprint results in disjointed polygons, uses best-effort approach to combine disjointed polygons. \
+A convex hull is performed on the polygons to create the smallest possible polygon that contains all the vertices in the geometries.
+
+![image](https://github.com/user-attachments/assets/1c7f04ee-8b2c-46b6-8d77-3ec60660f58e)
 
 ### `heatmap`
 
